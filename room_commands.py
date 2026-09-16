@@ -7,7 +7,7 @@ def room_add(shell, arg):
     #Maximum number of students the room can accommodate
     #int
     #Required
-    capacity = input("Enter room capacity: ")
+    capacity = int(input("Enter room capacity: "))
 
     #Facility and equipment feature tags supplied by this room
     #set[str].
