@@ -1,4 +1,4 @@
-def course_add(shell,arg):
+def course_add(shell):
     #Base course identifier; repeated values create separately numbered sections
     #Python type: Course.
     course_id = input("Enter course ID: ")
@@ -47,3 +47,24 @@ def course_add(shell,arg):
     #Non-empty faculty candidates, or null to derive candidates from faculty course-preference keys
     #list[Faculty] | None
     faculty = input("Enter faculty: ")
+
+    def course_list(shell,arg):
+        pass
+
+    def course_remove(shell,arg):
+        pass
+
+    def course_handler(shell, arg):
+        parts = arg.split()
+        if len(parts) == 0:
+            print("No command provided. Usage: add | list | remove")
+            return
+        command = parts[0]
+        if command == "add":
+            course_add(shell)
+        elif command == "list":
+            course_list(shell)
+        elif command == "remove":
+            course_remove(shell)
+        else:
+            print("Invalid command. Usage: add | list | remove")
