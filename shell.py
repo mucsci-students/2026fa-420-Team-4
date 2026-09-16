@@ -52,6 +52,24 @@ class SchedulerShell(Cmd):
     def do_hello(self, arg):
         print("Hello")
 
+    def do_new(self,arg):
+        print("Creating new config")
+
+    def do_load(self, arg):
+        pass
+    
+    def do_save(self, arg):
+        pass
+
+    def do_validate(self, arg):
+        pass
+
+    def do_generate(self, arg):
+        pass
+
+    def do_view(self, arg): 
+        pass
+
     def do_room(self, arg):
         room_handler(self, arg)
 
