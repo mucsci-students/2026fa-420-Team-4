@@ -78,3 +78,27 @@ def faculty_add(shell,arg):
     #dict[Lab, Preference]
     #Optional
     lab_preferences = input("Enter lab preferences: ")
+
+def faculty_list(shell):
+    pass
+def faculty_remove(shell,arg):
+    pass
+def faculty_update(shell,arg):
+    pass
+
+def faculty_handler(shell, arg):
+    parts = arg.split()
+    if len(parts) == 0:
+        print("No command provided. Usage: add | list | remove | update")
+        return
+    command = parts[0]
+    if command == "add":
+        faculty_add(shell)
+    elif command == "list":
+        faculty_list(shell)
+    elif command == "remove":
+        faculty_remove(shell,arg)
+    elif command == "update":
+        faculty_update(shell,arg)
+    else:
+        print("Invalid command. Usage: add | list | remove | update")
