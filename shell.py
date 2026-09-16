@@ -55,10 +55,16 @@ class SchedulerShell(Cmd):
     def do_room(self, arg):
         room_handler(self, arg)
 
-        """
-        in room_commands
+    def do_course(self, arg):
+        course_handler(self, arg)
+
+    def do_lab(self, arg):
+        lab_handler(self, arg)
+
+    def do_faculty(self, arg):
+        faculty_handler(self, arg)
         
-        """
+
     def do_exit(self, arg):
         return True
 
