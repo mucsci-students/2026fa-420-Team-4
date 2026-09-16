@@ -27,3 +27,27 @@ def room_add(shell, arg):
     Python type: TimeString.
     """
     times = input("Enter room times: ")
+
+def room_list(shell):
+    pass
+def room_remove(shell,arg):
+    pass
+def room_update(shell,arg):
+    pass
+
+def room_handler(shell, arg):
+    parts = arg.split()
+    if len(parts) == 0:
+        print("No command provided. Usage: add | list | remove | update")
+        return
+    command = parts[0]
+    if command == "add":
+        room_add(shell, arg)
+    elif command == "list":
+        room_list(shell)
+    elif command == "remove":
+        room_remove(shell,arg)
+    elif command == "update":
+        room_update(shell,arg)
+    else:
+        print("Invalid command. Usage: add | list | remove | update")
