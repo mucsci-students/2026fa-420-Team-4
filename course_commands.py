@@ -48,23 +48,28 @@ def course_add(shell):
     #list[Faculty] | None
     faculty = input("Enter faculty: ")
 
-    def course_list(shell,arg):
-        pass
+def course_list(shell):
+    pass
 
-    def course_remove(shell,arg):
-        pass
+def course_remove(shell,arg):
+     pass
+def course_update(shell,arg):
+    pass
 
-    def course_handler(shell, arg):
-        parts = arg.split()
-        if len(parts) == 0:
-            print("No command provided. Usage: add | list | remove")
-            return
-        command = parts[0]
-        if command == "add":
-            course_add(shell)
-        elif command == "list":
-            course_list(shell)
-        elif command == "remove":
-            course_remove(shell)
-        else:
-            print("Invalid command. Usage: add | list | remove")
+
+def course_handler(shell, arg):
+    parts = arg.split()
+    if len(parts) == 0:
+        print("No command provided. Usage: add | list | remove | update")
+        return
+    command = parts[0]
+    if command == "add":
+        course_add(shell)
+    elif command == "list":
+        course_list(shell)
+    elif command == "remove":
+        course_remove(shell,arg)
+    elif command == "update":
+        course_update(shell,arg)
+    else:
+        print("Invalid command. Usage: add | list | remove | update")
