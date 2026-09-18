@@ -1,6 +1,5 @@
 import json
 from cmd import Cmd
-from pathlib import Path
 from scheduler import (
     Scheduler,
     load_config_from_file,
@@ -52,7 +51,7 @@ class SchedulerShell(Cmd):
     def do_hello(self, arg):
         print("Hello")
 
-#add empty config list format (ie headers but no data)
+#Creates an empty config to load in
     def do_new(self,arg):
         filename = arg.strip().strip("\"'")
 
@@ -60,12 +59,36 @@ class SchedulerShell(Cmd):
             print("Usage: new <filename>.json")
             return
         else:
-            Path(filename).touch()
-        print(f"Created new file to load config into named: {filename}")
+            empty_config = {
+                "config": {
+                "rooms": [],
+                "labs": [],
+                "courses": [],
+                "faculty": []
+                },
+                "time_slot_config": {
+                "times": {
+                    "MON": [],
+                    "TUE": [],
+                    "WED": [],
+                    "THU": [],
+                    "FRI": []
+                },
+                "classes": []
+                },
+                "limit": 0,
+                "optimizer_flags": []
+            }
+        with open(filename, "w") as f:
+            json.dump(empty_config, f, indent=4)
+            
+        self.filename = filename
+
+        print(f"Created new config file: {filename}")
 
 
-    #Cannot load empty json have to populate before loading so make sure to call
-    # modify courses/lab/room etc        
+
+    #Load config into scheduler       
     def do_load(self, arg):
         filename = arg.strip()
 
@@ -93,21 +116,32 @@ class SchedulerShell(Cmd):
 
     def do_validate(self, arg):
         pass
-
+    
+    
+#Generates schedules based on the loaded .json
+#No need to pass anything in just type generate to make schedules
     def do_generate(self, arg):
-        pass
+        if self.config is None:
+            print("No configuration loaded.")
+            return
+
+        scheduler = Scheduler(self.config)
+
+        found = False
+
+        for schedule in scheduler.get_models():
+            found = True
+            print("Schedule:")
+            for course in schedule:
+                print(course.as_csv())
+
+        if not found:
+            print("No schedules found.")
+
 
     def do_view(self, arg): 
         pass
 
-
-#add handler if nothing loaded cant access these
-#add a return so the data can be added/modified/deleted from the loaded config file
-
-
-    """
-    How to return ___config and operation we want to do on it
-    """
 
     def do_room(self, arg):
         room_commands.room_handler(self, arg)
