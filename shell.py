@@ -104,6 +104,11 @@ class SchedulerShell(Cmd):
 #add handler if nothing loaded cant access these
 #add a return so the data can be added/modified/deleted from the loaded config file
 
+
+    """
+    How to return ___config and operation we want to do on it
+    """
+
     def do_room(self, arg):
         room_commands.room_handler(self, arg)
 
