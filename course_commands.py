@@ -1,63 +1,153 @@
+import copy
+
+from scheduler.config import (
+    CombinedConfig,
+    CourseConfig,
+)
+
 def course_add(shell):
+    if shell.config is None:
+        print("No configuration loaded.")
+        return
+    try:
     #Base course identifier; repeated values create separately numbered sections
     #Python type: Course.
     #Required
-    course_id = input("Enter course ID: ")
+        course_id = input("Enter course ID: ")
 
     #Optional stable section suffix; null uses the generated zero-padded input-order number
     #str | None
     #Optional
-    section_id = input("Enter section ID: ")
+        section_id = input("Enter section ID: ").strip()
+
+        if section_id == "":
+            section_id = None
 
     #Number of credit hours
     #int
     #Required
-    credits = input("Enter number of credits: ")
+        credits = int(input("Enter number of credits: "))
 
     #Expected section enrollment that any assigned rooms and labs must accommodate
     #int
     #Required
-    capacity = input("Enter capacity: ")
+        capacity = int(input("Enter capacity: "))
 
     #Required delivery composition of the selected class pattern
     #CourseModality
     #Allowed values: in_person / online / hybrid
     #Optional
-    modality = input("Enter modality (in_person, online, hybrid): ")
+        modality = input("Enter modality (in_person, online, hybrid): ")
 
     #Allowed room names; empty is valid only for compatible patterns that do not occupy a room
     #list[Room]
     #Required
-    room = input("Enter room: ")
+        room = [
+            value.strip()
+            for value in input(
+                "Enter Room(s) (comma separated): "
+            ).split(",")
+            if value.strip()
+        ]
+
 
     #Acceptable labs; an empty list means the course has no lab meeting
     #list[Lab]
     #Optional
-    lab = input("Enter lab: ")
+        lab = [
+                    value.strip()
+                    for value in input(
+                        "Enter Lab(s) (comma separated): "
+                    ).split(",")
+                    if value.strip()
+                ]
 
     #Feature tags every assigned lecture room must provide
     #set[str]
     #Optional
-    required_room_features = input("Enter required room features: ")
+        required_room_features = {
+            value.strip()
+            for value in input(
+                    "Enter required room features (comma separated): "
+            ).split(",")
+            if value.strip()
+        }
 
     #Feature tags every assigned lab must provide
     #set[str]
     #Optional
-    required_lab_features = input("Enter required lab features: ")
+        required_lab_features = {
+            value.strip()
+            for value in input(
+                    "Enter required lab features (comma separated): "
+            ).split(",")
+            if value.strip()
+        }
 
     #Whether the lab meeting also occupies the section's assigned lecture room
     #bool
-    reserve_room_during_lab = input("Reserve room during lab? (y/n): ")
+        reserve_room_during_lab = input(
+            "Reserve room during lab? (y/n): "
+        ).lower() == "y"
 
     #Base course IDs whose sections cannot overlap; an empty list means no declared conflicts
     #list[Course]
     #Required
-    conflicts = input("Enter conflicts: ")
+        conflicts = [
+                            value.strip()
+                            for value in input(
+                                "Enter conflict(s) (comma separated): "
+                            ).split(",")
+                            if value.strip()
+                        ]
 
     #Non-empty faculty candidates, or null to derive candidates from faculty course-preference keys
     #list[Faculty] | None
     #Required
-    faculty = input("Enter faculty: ")
+        faculty = [
+                                    value.strip()
+                                    for value in input(
+                                        "Enter faculty (comma separated): "
+                                    ).split(",")
+                                    if value.strip()
+                                ]
+        course = CourseConfig(
+            course_id = course_id,
+            section_id = section_id,
+            credits = credits,
+            capacity = capacity,
+            modality = modality,
+            room = room,
+            lab = lab,
+            required_room_features = required_room_features,
+            required_lab_features = required_lab_features,
+            reserve_room_during_lab = reserve_room_during_lab,
+            conflicts = conflicts,
+            faculty = faculty
+        )
+        candidate = copy.deepcopy(
+            shell.config
+        )
+
+        candidate.config.courses.append(
+            course
+        )
+
+        CombinedConfig.model_validate(
+            candidate.model_dump()
+        )
+
+        shell.config = candidate
+
+        print("Course added.")
+
+    except Exception as error:
+        print(
+            f"Add failed: "
+            f"{error}"
+        )
+
+
 
 def course_list(shell):#
     pass
