@@ -77,7 +77,7 @@ class SchedulerShell(Cmd):
         course_handler(self, arg)
 
     def do_lab(self, arg):
-        lab_handler(self, arg)
+        print (lab_handler(self, arg))
 
     def do_faculty(self, arg):
         faculty_handler(self, arg)

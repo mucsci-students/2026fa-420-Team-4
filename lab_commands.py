@@ -31,53 +31,8 @@ def lab_add(shell,arg):
     return LabConfig(name=name, capacity=capacity, features=features, times=times)
 
 def lab_remove(shell,arg):
-    selected_lab = input("Enter the name of the lab to remove: ")
-    # ``arg`` is the configuration file passed to this command.
-    if not isinstance(arg, dict):
-        return "LABDNE"
-
-    labs = arg.get("labs")
-    if not isinstance(labs, list):
-        return "LABDNE"
-
-    for index, lab in enumerate(labs):
-        if isinstance(lab, dict):
-            lab_name = lab.get("name")
-        elif isinstance(lab, (tuple, list)) and lab:
-            lab_name = lab[0]
-        else:
-            lab_name = None
-
-        if lab_name == selected_lab:
-            del labs[index]
-            return arg
-
     return "LABDNE"
 def lab_modify(shell,arg):
-    try:
-        # Support both current and legacy configuration attribute names.
-        config = getattr(shell, "config", None)
-        if config is None:
-            config = getattr(shell, "config_file", None)
-
-        # Read the configured labs, or use an empty list when unavailable.
-        labs = config.get("labs", []) if isinstance(config, dict) else []
-
-        def lab_identity(lab):
-            if isinstance(lab, dict):
-                return lab.get("name"), lab.get("capacity")
-            if isinstance(lab, (tuple, list)) and len(lab) >= 2:
-                return lab[0], lab[1]
-            return None
-
-        target = lab_identity(arg)
-
-        for lab in labs:
-            if target is not None and lab_identity(lab) == target:
-                return lab
-    except (AttributeError, TypeError, KeyError):
-        pass
-
     return ERROR_UNDEFINED
 
 def lab_handler(shell, arg):
