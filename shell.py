@@ -1,3 +1,23 @@
+"""
+To test
+new ____.json creates empty config
+course add ___.json adds info to course section of selected json
+load ___.json loads into scheduler
+generate makes schedule
+
+
+
+TODO: 
+Save a generated schedule
+Print a schedule
+Validate - check docs
+
+"""
+
+
+
+
+
 import json
 from cmd import Cmd
 from scheduler import (
