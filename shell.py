@@ -1,12 +1,11 @@
 import json
 from cmd import Cmd
+from pathlib import Path
 from scheduler import (
     Scheduler,
     load_config_from_file,
 )
 from scheduler.config import CombinedConfig
-from scheduler.validation import validate_combined_config_data
-
 import room_commands
 import lab_commands
 import course_commands
@@ -53,32 +52,25 @@ class SchedulerShell(Cmd):
     def do_hello(self, arg):
         print("Hello")
 
+#add empty config list format (ie headers but no data)
     def do_new(self,arg):
         filename = arg.strip().strip("\"'")
 
         if filename == "":
-            print("Usage: new <filename>")
+            print("Usage: new <filename>.json")
             return
+        else:
+            Path(filename).touch()
+        print(f"Created new file to load config into named: {filename}")
 
-        try:
-            self.config = load_config_from_file(
-                CombinedConfig,
-                filename
-            )
 
-            self.filename = filename
-
-            print(f"Created configuration from {filename}")
-
-        except Exception as error:
-            print(f"Error creating configuration: {error}")
-            
-            
+    #Cannot load empty json have to populate before loading so make sure to call
+    # modify courses/lab/room etc        
     def do_load(self, arg):
         filename = arg.strip()
 
         if filename == "":
-            print("Usage: load <filename>")
+            print("Usage: load <filename> with .json extension")
             return
 
         try:
@@ -108,6 +100,10 @@ class SchedulerShell(Cmd):
     def do_view(self, arg): 
         pass
 
+
+#add handler if nothing loaded cant access these
+#add a return so the data can be added/modified/deleted from the loaded config file
+
     def do_room(self, arg):
         room_commands.room_handler(self, arg)
 
@@ -123,7 +119,6 @@ class SchedulerShell(Cmd):
 
     def do_exit(self, arg):
         return True
-
 
 if __name__ == "__main__":
     SchedulerShell().cmdloop()
