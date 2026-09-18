@@ -12,12 +12,12 @@ def lab_add(shell,arg):
     #Facility and equipment feature tags supplied by this lab
     #set[str]
     #Optional
-    features = input("Enter lab features: ")
+    features = input("Enter optional lab features: ")
 
     #Optional weekday lab availability windows; null means unrestricted availability
     #dict[Day, list[TimeRange]] | None
     #Optional
-    times = input("Enter lab times: ")
+    times = input("Enter optional lab times: ")
 
 def lab_list(shell):
     pass
