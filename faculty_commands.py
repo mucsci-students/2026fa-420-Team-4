@@ -91,14 +91,19 @@ def faculty_handler(shell, arg):
     if len(parts) == 0:
         print("No command provided. Usage: add | list | remove | update")
         return
+    if len(parts) == 0:
+        print("Usage course ___ <filename>.json")
+        
     command = parts[0]
+    filename =parts[1]
+    
     if command == "add":
-        faculty_add(shell)
+        faculty_add(shell,filename)
     elif command == "list":
-        faculty_list(shell)
+        faculty_list(shell,filename)
     elif command == "remove":
-        faculty_remove(shell,arg)
+        faculty_remove(shell, filename)
     elif command == "update":
-        faculty_update(shell,arg)
+        faculty_update(shell, filename)
     else:
         print("Invalid command. Usage: add | list | remove | update")

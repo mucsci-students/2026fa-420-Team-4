@@ -31,14 +31,19 @@ def lab_handler(shell, arg):
     if len(parts) == 0:
         print("No command provided. Usage: add | list | remove | update")
         return
+    if len(parts) == 0:
+        print("Usage course ___ <filename>.json")
+        
     command = parts[0]
+    filename =parts[1]
+    
     if command == "add":
-        lab_add(shell, arg)
+        lab_add(shell,filename)
     elif command == "list":
-        lab_list(shell)
+        lab_list(shell,filename)
     elif command == "remove":
-        lab_remove(shell,arg)
+        lab_remove(shell, filename)
     elif command == "update":
-        lab_update(shell,arg)
+        lab_update(shell, filename)
     else:
         print("Invalid command. Usage: add | list | remove | update")

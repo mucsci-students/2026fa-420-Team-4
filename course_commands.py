@@ -1,70 +1,142 @@
-def course_add(shell):
-    #Base course identifier; repeated values create separately numbered sections
-    #Python type: Course.
-    #Required
-    course_id = input("Enter course ID: ")
+import json
 
-    #Optional stable section suffix; null uses the generated zero-padded input-order number
-    #str | None
-    #Optional
-    section_id = input("Enter section ID: ")
+from scheduler.config import (
+    CombinedConfig,
+    CourseConfig,
+)
 
-    #Number of credit hours
-    #int
-    #Required
-    credits = input("Enter number of credits: ")
+#Adds a course to the config that was created
+def course_add(shell, filename):
+    if filename is None:
+        print("No configuration file selected.")
+        return
 
-    #Expected section enrollment that any assigned rooms and labs must accommodate
-    #int
-    #Required
-    capacity = input("Enter capacity: ")
+    try:
+        # Open the file created by "new"
+        with open(filename, "r") as f:
+            data = json.load(f)
 
-    #Required delivery composition of the selected class pattern
-    #CourseModality
-    #Allowed values: in_person / online / hybrid
-    #Optional
-    modality = input("Enter modality (in_person, online, hybrid): ")
+        # Base course identifier
+        course_id = input("Enter course ID: ")
 
-    #Allowed room names; empty is valid only for compatible patterns that do not occupy a room
-    #list[Room]
-    #Required
-    room = input("Enter room: ")
+        # Optional section ID
+        section_id = input("Enter section ID: ").strip()
+        if section_id == "":
+            section_id = None
 
-    #Acceptable labs; an empty list means the course has no lab meeting
-    #list[Lab]
-    #Optional
-    lab = input("Enter lab: ")
+        # Number of credits
+        credits = int(input("Enter number of credits: "))
 
-    #Feature tags every assigned lecture room must provide
-    #set[str]
-    #Optional
-    required_room_features = input("Enter required room features: ")
+        # Expected section enrollment
+        capacity = int(input("Enter capacity: "))
 
-    #Feature tags every assigned lab must provide
-    #set[str]
-    #Optional
-    required_lab_features = input("Enter required lab features: ")
+        # Course modality
+        modality = input(
+            "Enter modality (in_person, online, hybrid): "
+        )
 
-    #Whether the lab meeting also occupies the section's assigned lecture room
-    #bool
-    reserve_room_during_lab = input("Reserve room during lab? (y/n): ")
+        # Allowed rooms
+        room = [
+            value.strip()
+            for value in input(
+                "Enter Room(s) (comma separated): "
+            ).split(",")
+            if value.strip()
+        ]
 
-    #Base course IDs whose sections cannot overlap; an empty list means no declared conflicts
-    #list[Course]
-    #Required
-    conflicts = input("Enter conflicts: ")
+        # Acceptable labs
+        lab = [
+            value.strip()
+            for value in input(
+                "Enter Lab(s) (comma separated): "
+            ).split(",")
+            if value.strip()
+        ]
 
-    #Non-empty faculty candidates, or null to derive candidates from faculty course-preference keys
-    #list[Faculty] | None
-    #Required
-    faculty = input("Enter faculty: ")
+        # Required room features
+        required_room_features = [
+            value.strip()
+            for value in input(
+                "Enter required room features (comma separated): "
+            ).split(",")
+            if value.strip()
+        ]
 
-def course_list(shell):#
+        # Required lab features
+        required_lab_features = [
+            value.strip()
+            for value in input(
+                "Enter required lab features (comma separated): "
+            ).split(",")
+            if value.strip()
+        ]
+
+        # Whether the room stays reserved during the lab
+        reserve_room_during_lab = input(
+            "Reserve room during lab? (y/n): "
+        ).lower() == "y"
+
+        # Course conflicts
+        conflicts = [
+            value.strip()
+            for value in input(
+                "Enter conflict(s) (comma separated): "
+            ).split(",")
+            if value.strip()
+        ]
+
+        # Faculty
+        faculty = [
+            value.strip()
+            for value in input(
+                "Enter faculty (comma separated): "
+            ).split(",")
+            if value.strip()
+        ]
+
+        # Create course dictionary
+        course = {
+            "course_id": course_id,
+            "section_id": section_id,
+            "credits": credits,
+            "capacity": capacity,
+            "modality": modality,
+            "room": room,
+            "lab": lab,
+            "required_room_features": required_room_features,
+            "required_lab_features": required_lab_features,
+            "reserve_room_during_lab": reserve_room_during_lab,
+            "conflicts": conflicts,
+            "faculty": faculty
+        }
+
+        # Add course to configuration
+        data["config"]["courses"].append(course)
+
+        # Save configuration back to the same file
+        with open(shell.filename, "w") as f:
+            json.dump(data, f, indent=4)
+
+        print("Course added.")
+
+    except Exception as error:
+        print(f"Add failed: {error}")
+
+
+
+
+
+
+
+def course_list(shell, filename):  #
     pass
 
-def course_remove(shell,arg):
-     pass
-def course_update(shell,arg):
+
+def course_remove(shell, filename):
+    pass
+
+
+def course_update(shell, filename):
     pass
 
 
@@ -73,14 +145,19 @@ def course_handler(shell, arg):
     if len(parts) == 0:
         print("No command provided. Usage: add | list | remove | update")
         return
+    if len(parts) == 0:
+        print("Usage course ___ <filename>.json")
+        
     command = parts[0]
+    filename =parts[1]
+    
     if command == "add":
-        course_add(shell)
+        course_add(shell,filename)
     elif command == "list":
-        course_list(shell)
+        course_list(shell,filename)
     elif command == "remove":
-        course_remove(shell,arg)
+        course_remove(shell, filename)
     elif command == "update":
-        course_update(shell,arg)
+        course_update(shell, filename)
     else:
         print("Invalid command. Usage: add | list | remove | update")

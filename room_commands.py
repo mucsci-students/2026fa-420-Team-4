@@ -35,19 +35,25 @@ def room_remove(shell,arg):
 def room_update(shell,arg):
     pass
 
+        
 def room_handler(shell, arg):
     parts = arg.split()
     if len(parts) == 0:
         print("No command provided. Usage: add | list | remove | update")
         return
+    if len(parts) == 0:
+        print("Usage course ___ <filename>.json")
+        
     command = parts[0]
+    filename =parts[1]
+    
     if command == "add":
-        room_add(shell, arg)
+        room_add(shell,filename)
     elif command == "list":
-        room_list(shell)
+        room_list(shell,filename)
     elif command == "remove":
-        room_remove(shell,arg)
+        room_remove(shell, filename)
     elif command == "update":
-        room_update(shell,arg)
+        room_update(shell, filename)
     else:
         print("Invalid command. Usage: add | list | remove | update")

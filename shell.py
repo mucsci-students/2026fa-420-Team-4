@@ -1,3 +1,23 @@
+"""
+To test
+new ____.json creates empty config
+course add ___.json adds info to course section of selected json
+load ___.json loads into scheduler
+generate makes schedule
+
+
+
+TODO: 
+Save a generated schedule
+Print a schedule
+Validate - check docs
+
+"""
+
+
+
+
+
 import json
 from cmd import Cmd
 from scheduler import (
@@ -5,11 +25,10 @@ from scheduler import (
     load_config_from_file,
 )
 from scheduler.config import CombinedConfig
-
-from room_commands import *
-from lab_commands import *
-from course_commands import *
-from faculty_commands import *
+import room_commands
+import lab_commands
+import course_commands
+import faculty_commands
 
 """
 from scheduler import (
@@ -42,50 +61,120 @@ audit = scheduler.audit_schedule(first_schedule)
 class SchedulerShell(Cmd):
     intro = "Welcome to the Scheduler Shell. Type help or ? to list commands.\n"
     prompt = "scheduler> "
-
     def __init__(self):
         super().__init__()
-        
+
         self.config: CombinedConfig | None = None
+        self.filename: str | None = None
 
 
-    def do_hello(self, arg):
-        print("Hello")
-
+#Creates an empty config to load in
     def do_new(self,arg):
-        print("Creating new config")
+        filename = arg.strip().strip("\"'")
 
+        if filename == "":
+            print("Usage: new <filename>.json")
+            return
+        else:
+            empty_config = {
+                "config": {
+                "rooms": [],
+                "labs": [],
+                "courses": [],
+                "faculty": []
+                },
+                "time_slot_config": {
+                "times": {
+                    "MON": [],
+                    "TUE": [],
+                    "WED": [],
+                    "THU": [],
+                    "FRI": []
+                },
+                "classes": []
+                },
+                "limit": 0,
+                "optimizer_flags": []
+            }
+        with open(filename, "w") as f:
+            json.dump(empty_config, f, indent=4)
+            
+        self.filename = filename
+
+        print(f"Created new config file: {filename}")
+
+
+
+    #Load config into scheduler       
     def do_load(self, arg):
-        pass
-    
+        filename = arg.strip()
+
+        if filename == "":
+            print("Usage: load <filename> with .json extension")
+            return
+
+        try:
+            self.config = load_config_from_file(
+                CombinedConfig,
+                filename
+            )
+
+            print(f"Loaded {filename}")
+
+        except Exception as error:
+            print(
+                f"Error loading configuration: "
+                f"{error}"
+            )
+            
+            
     def do_save(self, arg):
         pass
 
     def do_validate(self, arg):
         pass
-
+    
+    
+#Generates schedules based on the loaded .json
+#No need to pass anything in just type generate to make schedules
     def do_generate(self, arg):
-        pass
+        if self.config is None:
+            print("No configuration loaded.")
+            return
+
+        scheduler = Scheduler(self.config)
+
+        found = False
+
+        for schedule in scheduler.get_models():
+            found = True
+            print("Schedule:")
+            for course in schedule:
+                print(course.as_csv())
+
+        if not found:
+            print("No schedules found.")
+
 
     def do_view(self, arg): 
         pass
 
+
     def do_room(self, arg):
-        room_handler(self, arg)
+        room_commands.room_handler(self, arg)
 
     def do_course(self, arg):
-        course_handler(self, arg)
+        course_commands.course_handler(self, arg)
 
     def do_lab(self, arg):
-        lab_handler(self, arg)
+        lab_commands.lab_handler(self, arg)
 
     def do_faculty(self, arg):
-        faculty_handler(self, arg)
+        faculty_commands.faculty_handler(self, arg)
         
 
     def do_exit(self, arg):
         return True
-
 
 if __name__ == "__main__":
     SchedulerShell().cmdloop()
