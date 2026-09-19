@@ -67,9 +67,6 @@ class SchedulerShell(Cmd):
         self.config: CombinedConfig | None = None
         self.filename: str | None = None
 
-        self.config: CombinedConfig | None = None
-        self.filename: str | None = None
-
 
 #Creates an empty config to load in
     def do_new(self,arg):
