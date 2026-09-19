@@ -94,7 +94,7 @@ def _get_classes_list(data):
     return [], "time_slot_config"
 
 
-#time blocks - times command
+#time blocks - times
 
 def times_list(shell, filename):
     if filename is None:
@@ -188,13 +188,84 @@ def times_update(shell, filename):
         print(f"Update failed: {error}")
 
 
-#class patterns - classes
+
+
+
+
+
+
+#class pattern - classes
+
 def _prompt_meetings():
-    """Prompts for a non-empty list of meetings for a class pattern."""
+    """Prompts for a list of meetings for a class pattern."""
     print("\n-- Enter Meetings for Pattern --")
     meetings = []
-    used_days = set()
-    lab_count = 0
+
+    while True:
+        add_more = _prompt_input(
+            "Add a meeting? (y/n) [y]: ",
+            lambda v: v.lower() in ("y", "yes"),
+            default=True,
+        )
+        if not add_more:
+            break
+
+        def validate_day(v):
+            day_upper = v.strip().upper()
+            if day_upper not in VALID_DAYS:
+                raise ValueError(f"Day must be one of {', '.join(VALID_DAYS)}")
+            return day_upper
+
+        day = _prompt_input("Day (MON, TUE, WED, THU, FRI): ", validate_day)
+
+        duration = _prompt_input(
+            "Duration in minutes: ",
+            lambda v: _parse_int(v, min_value=1),
+        )
+
+        def validate_delivery(v):
+            deliv = v.strip().lower()
+            if deliv not in VALID_DELIVERIES:
+                raise ValueError(
+                    f"Delivery must be one of: {', '.join(VALID_DELIVERIES)}"
+                )
+            return deliv
+
+        delivery = _prompt_input(
+            "Delivery (in_person / online) [in_person]: ",
+            validate_delivery,
+            default="in_person",
+        )
+
+        lab = _prompt_input(
+            "Is lab? (y/n) [n]: ",
+            lambda v: v.lower() == "y",
+            default=False,
+        )
+
+        def validate_meeting_start(v):
+            if not v or v.lower() == "null":
+                return None
+            return _parse_time_str(v)
+
+        mtg_start = _prompt_input(
+            "Meeting start time (HH:MM or Enter for null): ",
+            validate_meeting_start,
+            default=None,
+        )
+
+        meeting = {
+            "day": day,
+            "duration": duration,
+            "delivery": delivery,
+            "lab": lab,
+        }
+        if mtg_start:
+            meeting["start_time"] = mtg_start
+
+        meetings.append(meeting)
+
+    return meetings
 
 
 def classes_add(shell, filename):
@@ -230,7 +301,7 @@ def classes_add(shell, filename):
             default=False,
         )
 
-        meetings = _prompt_meetings()
+        meetings = _prompt_meetings() or []
 
         pattern_entry = {
             "credits": credits,
@@ -276,7 +347,7 @@ def classes_list(shell, filename):
             creds = cp.get("credits", "N/A")
             status = "Disabled" if cp.get("disabled", False) else "Enabled"
             fallback_start = cp.get("start_time") or "None"
-            meetings = cp.get("meetings", [])
+            meetings = cp.get("meetings") or []
 
             mtg_strs = []
             for m in meetings:
@@ -289,7 +360,7 @@ def classes_list(shell, filename):
 
             print(
                 f"[{idx}] Credits: {creds} | Status: {status} | Fallback Start: {fallback_start}\n"
-                f"     Meetings: {'; '.join(mtg_strs)}"
+                f"     Meetings: {'; '.join(mtg_strs) if mtg_strs else 'None'}"
             )
         print("-" * 40 + "\n")
 
@@ -391,7 +462,7 @@ def classes_update(shell, filename):
         )
 
         if update_mtgs:
-            cp["meetings"] = _prompt_meetings()
+            cp["meetings"] = _prompt_meetings() or []
 
         with open(filename, "w") as f:
             json.dump(data, f, indent=4)

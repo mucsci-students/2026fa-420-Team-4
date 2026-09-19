@@ -50,7 +50,28 @@
             "THU": [],
             "FRI": []
         },
-        "classes": []
+        "classes": [
+            {
+                "credits": 5,
+                "meetings": null,
+                "disabled": false,
+                "start_time": "12:00"
+            },
+            {
+                "credits": 5,
+                "meetings": [
+                    {
+                        "day": "MON",
+                        "duration": 45,
+                        "delivery": "in_person",
+                        "lab": false,
+                        "start_time": "12:00"
+                    }
+                ],
+                "disabled": false,
+                "start_time": "01:00"
+            }
+        ]
     },
     "limit": 0,
     "optimizer_flags": []
