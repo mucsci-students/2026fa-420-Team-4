@@ -23,6 +23,7 @@ from cmd import Cmd
 from scheduler import (
     Scheduler,
     load_config_from_file,
+    validate_combined_config_data,
 )
 from scheduler.config import CombinedConfig
 import room_commands
@@ -129,10 +130,36 @@ class SchedulerShell(Cmd):
             
             
     def do_save(self, arg):
-        pass
+        filename = arg.strip()
+        if filename == "":
+            print("Usage: save the currently loaded configuration to <filename>")
+        if not self.config == None:
+            # opens specified file and writes config data onto it
+            with open(filename, "w") as file:
+                #json.dump(self.config, file, indent=4)
+                file.write(self.config)
+            print("Config data successfully saved to " + filename)
+        else:
+            print("There is no currently loaded config data to save.")
 
     def do_validate(self, arg):
-        pass
+        # mostly gotten from the diagnostics and auditing section
+        # of the scheduler documentation linked below
+        # https://mucsci-scheduler.docs.buildwithfern.com/concepts/diagnostics-and-auditing
+        filename = arg.strip()
+        if filename == "":
+            print("Usage: validate the contents of config file <filename>")
+            return
+        # reads specified file and validates its contents
+        with open(filename, "r") as data:
+            v_results = validate_combined_config_data(json.loads(data.read()))
+        if not v_results.is_valid:
+            print("Config data is invalid.")
+            for finding in v_results.diagnostics:
+                print(finding.code, finding.path, finding.message)
+        else:
+            print("Config data has been validated.")
+            print(v_results.configuration_fingerprint)
     
     
 #Generates schedules based on the loaded .json
