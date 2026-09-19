@@ -1,0 +1,42 @@
+{
+    "config": {
+        "rooms": [],
+        "labs": [],
+        "courses": [],
+        "faculty": [
+            {
+                "name": "h",
+                "maximum_credits": 23,
+                "minimum_credits": 5,
+                "unique_course_limit": 3,
+                "maximum_days": 5,
+                "mandatory_days": [],
+                "times": {
+                    "THU": [
+                        {
+                            "start": "09:00",
+                            "end": "12:00"
+                        }
+                    ]
+                },
+                "course_preferences": {
+                    "CS101": 5
+                },
+                "room_preferences": {},
+                "lab_preferences": {}
+            }
+        ]
+    },
+    "time_slot_config": {
+        "times": {
+            "MON": [],
+            "TUE": [],
+            "WED": [],
+            "THU": [],
+            "FRI": []
+        },
+        "classes": []
+    },
+    "limit": 0,
+    "optimizer_flags": []
+}

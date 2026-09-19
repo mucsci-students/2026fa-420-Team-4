@@ -1,11 +1,12 @@
 import json
 
+"""
 from scheduler.config import (
     CombinedConfig,
     CourseConfig,
 )
+"""
 
-VALID_MODALITIES = {"in_person", "online", "hybrid"}
 
 #Loops so user is reprompted on invalid input
 def _prompt_input(prompt_text, validator_func, default=None):
@@ -87,6 +88,8 @@ def course_add(shell, filename):
             "Enter capacity (positive integer): ",
             lambda v: _parse_int(v, min_value=1),
         )
+    
+        VALID_MODALITIES = {"in_person", "online", "hybrid"}
 
         def validate_modality(v):
             v_clean = v.lower()
