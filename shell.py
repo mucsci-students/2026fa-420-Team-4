@@ -68,9 +68,6 @@ class SchedulerShell(Cmd):
         self.filename: str | None = None
 
 
-    def do_hello(self, arg):
-        print("Hello")
-
 #Creates an empty config to load in
     def do_new(self,arg):
         filename = arg.strip().strip("\"'")
