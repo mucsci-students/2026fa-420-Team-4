@@ -33,19 +33,16 @@ def validate_flags_list(raw_flags):
             f"Unknown flag(s): {', '.join(invalid)}. Valid options are: {valid_str}"
         )
 
-    # Deduplicate preserving order
     seen = set()
     return [f for f in raw_flags if not (f in seen or seen.add(f))]
 
 
 def _load_data(filename):
-    """Loads JSON data from file."""
     with open(filename, "r") as f:
         return json.load(f)
 
 
 def _save_data(filename, data):
-    """Saves JSON data to file."""
     with open(filename, "w") as f:
         json.dump(data, f, indent=4)
 
