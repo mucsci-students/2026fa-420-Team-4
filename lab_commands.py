@@ -1,6 +1,8 @@
 SUCCESS = 0
 ERROR_UNDEFINED = -1
 
+import ast
+
 from scheduler.config import LabConfig
 
 
@@ -13,21 +15,28 @@ def lab_add(shell,arg):
     #Maximum number of students the lab can accommodate
     #int
     #Required
-    capacity = input("Enter lab capacity: ")
+    capacity = int ( input ( "Enter lab capacity: " ) )
 
     #Facility and equipment feature tags supplied by this lab
     #set[str]
     #Optional
-    features = input("Enter optional lab features: ")
+    features = set()
+    while True:
+        feature = input("Enter optional lab feature (press Enter when finished): ")
+        if feature == "":
+            break
+        features.add(feature)
 
     #Optional weekday lab availability windows; null means unrestricted availability
     #dict[Day, list[TimeRange]] | None
     #Optional
-    times = input("Enter optional lab times: ")
-    if features == "":
-        features = None
-    if times == "":
-        times = None
+    times_text = input("Enter optional lab times as a dictionary (press Enter for unrestricted): ")
+    times: dict | None = None
+    if times_text.strip():
+        parsed_times = ast.literal_eval(times_text)
+        if not isinstance(parsed_times, dict):
+            raise ValueError("Lab times must be a dictionary.")
+        times = parsed_times
     return LabConfig(name=name, capacity=capacity, features=features, times=times)
 
 def lab_remove(shell,arg):
