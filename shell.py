@@ -29,6 +29,9 @@ import room_commands
 import lab_commands
 import course_commands
 import faculty_commands
+import times_commands
+import optimizer_commands
+import limit_commands
 
 """
 from scheduler import (
@@ -171,7 +174,18 @@ class SchedulerShell(Cmd):
 
     def do_faculty(self, arg):
         faculty_commands.faculty_handler(self, arg)
+    
+    def do_times(self,arg):
+        times_commands.times_handler(self,arg)
         
+    def do_classes(self,arg):
+        times_commands.classes_handler(self,arg)
+        
+    def do_optimizer(self,arg):
+        optimizer_commands.optimizer_handler(self,arg)
+        
+    def do_limit(self, arg):
+        limit_commands.limit_handler(self,arg)
 
     def do_exit(self, arg):
         return True
