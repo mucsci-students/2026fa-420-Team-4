@@ -19,10 +19,10 @@ HELP_TOPICS = {
             "remove": "Remove a class pattern by its index number.",
         },
     },
-    "flags": {
-        "title": "OPTIMIZER FLAGS (flags)",
+    "optimizer": {
+        "title": "OPTIMIZER FLAGS (optimizer)",
         "summary": "Configure preference optimization goals beyond basic feasibility.",
-        "usage": "flags <add|list|update|remove> <filename.json>",
+        "usage": "optimizer <add|list|update|remove> <filename.json>",
         "commands": {
             "add": "Add specific flag(s) to the active optimizer flags list.",
             "list": "View currently active flags alongside all available valid flags.",
@@ -39,15 +39,21 @@ HELP_TOPICS = {
                 "Prefer room assignments matching faculty room preferences.",
             ),
             ("faculty_lab", "Prefer lab assignments matching faculty lab preferences."),
-            ("same_room", "Prefer courses taught by the same faculty to share a room."),
-            ("same_lab", "Prefer courses taught by the same faculty to share a lab."),
+            (
+                "same_room",
+                "Prefer eligible courses taught by one faculty member to share a resource.",
+            ),
+            (
+                "same_lab",
+                "Prefer eligible courses taught by one faculty member to share a resource.",
+            ),
             (
                 "pack_rooms",
-                "Prefer adjacent meetings of different courses in the same room.",
+                "Prefer different courses to use the same resource at adjacent meetings. Online meetings and unreserved lab meetings do not count",
             ),
             (
                 "pack_labs",
-                "Prefer adjacent meetings of different courses in the same lab.",
+                "Prefer different courses to use the same resource at adjacent meetings. Online meetings and unreserved lab meetings do not count",
             ),
         ],
     },
@@ -62,8 +68,8 @@ HELP_TOPICS = {
             "remove": "Remove the limit key to revert to engine default (10).",
         },
     },
-    "courses": {
-        "title": "COURSE CONFIGURATIONS (courses)",
+    "course": {
+        "title": "COURSE CONFIGURATIONS (course)",
         "summary": "Manage individual course sections, capacity, modalities, rooms, labs, and faculty.",
         "usage": "course <add|list|update|remove> <filename.json>",
         "commands": {
@@ -84,7 +90,7 @@ HELP_TOPICS = {
             "remove": "Remove a faculty member profile by name from the configuration file.",
         },
     },
-    "rooms": {
+    "room": {
         "title": "ROOM CONFIGURATIONS (room)",
         "summary": "Manage room assets, seating capacity, features, and availability windows.",
         "usage": "room <add|list|update|remove> <filename.json>",
@@ -95,7 +101,7 @@ HELP_TOPICS = {
             "remove": "Remove a room by name from the configuration file.",
         },
     },
-    "labs": {
+    "lab": {
         "title": "LAB CONFIGURATIONS (lab)",
         "summary": "Manage specialized lab spaces, capacity, features, and availability windows.",
         "usage": "lab <add|list|update|remove> <filename.json>",
@@ -105,6 +111,62 @@ HELP_TOPICS = {
             "update": "Select a lab by name to update capacity, features, or availability times.",
             "remove": "Remove a lab by name from the configuration file.",
         },
+    },
+    "new": {
+        "title": "CREATE NEW CONFIGURATION (new)",
+        "summary": "Generate a new empty scheduler JSON configuration file template.",
+        "usage": "new <filename.json>",
+        "description": (
+            "Creates a new, unpopulated JSON configuration file pre-structured with empty sections\n"
+            "for rooms, labs, courses, faculty, time slots, class patterns, limits, and optimizer flags."
+        ),
+    },
+    "load": {
+        "title": "LOAD CONFIGURATION (load)",
+        "summary": "Load a JSON configuration file into the scheduler.",
+        "usage": "load <filename.json>",
+        "description": (
+            "Reads and parses the specified JSON file into a CombinedConfig object in memory.\n"
+            "This configuration is used directly by the 'generate' command to solve schedules."
+        ),
+    },
+    "save": {
+        "title": "SAVE CONFIGURATION (save)",
+        "summary": "Save the currently loaded in-memory configuration to a JSON file.",
+        "usage": "save <filename.json>",
+        "description": (
+            "Writes the active in-memory CombinedConfig object out to the specified file path."
+        ),
+    },
+    "validate": {
+        "title": "VALIDATE CONFIGURATION FILE (validate)",
+        "summary": "Perform schema and constraint diagnostic checks on a configuration JSON file.",
+        "usage": "validate <filename.json>",
+        "description": (
+            "Parses and runs diagnostics against a target configuration JSON file.\n"
+            "Outputs diagnostic codes, error paths, and messages if invalid, or prints\n"
+            "the configuration fingerprint if valid."
+        ),
+    },
+    "generate": {
+        "title": "GENERATE SCHEDULES (generate)",
+        "summary": "Runs the scheduler on the currently loaded configuration.",
+        "usage": "generate",
+        "description": (
+            "Iterates through valid schedule solutions and outputs each assigned course in CSV format."
+        ),
+    },
+    "view": {
+        "title": "VIEW SCHEDULE (view)",
+        "summary": "Display summary information or inspect active schedule data.",
+        "usage": "view",
+        "description": ("Inspects and outputs generated schedule details."),
+    },
+    "exit": {
+        "title": "EXIT SHELL (exit)",
+        "summary": "Terminate and close the scheduler CLI environment.",
+        "usage": "exit",
+        "description": "Exits the Scheduler Shell command loop.",
     },
 }
 
@@ -120,7 +182,7 @@ def show_general_help():
         print(f"  Usage:   {data['usage']}")
 
     print("\n" + "-" * 55)
-    print("  Type 'help <topic>' for details (e.g., 'help lab' or 'help room').")
+    print("  Type 'help <topic>' for details (e.g., 'help new' or 'help room').")
     print("  Type 'exit' to quit the shell.")
     print("-" * 55 + "\n")
 
@@ -140,11 +202,18 @@ def show_topic_help(topic):
     print(f"Summary: {data['summary']}")
     print(f"Usage:   {data['usage']}\n")
 
-    print("Commands:")
+    # Render description if present (single-action commands)
+    if "description" in data:
+        print("Details:")
+        print(f"  {data['description']}\n")
 
-    for cmd_name, cmd_desc in data["commands"].items():
-        print(f"  {topic_key} {cmd_name:<8} - {cmd_desc}")
+    # Render subcommands if present (resource commands)
+    if "commands" in data:
+        print("Commands:")
+        for cmd_name, cmd_desc in data["commands"].items():
+            print(f"  {topic_key} {cmd_name:<8} - {cmd_desc}")
 
+    # Render flags reference list if present
     if "flags_reference" in data:
         print("\nValid Flags Reference:")
         for flag_name, flag_desc in data["flags_reference"]:
