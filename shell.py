@@ -132,12 +132,15 @@ class SchedulerShell(Cmd):
     def do_save(self, arg):
         filename = arg.strip()
         if filename == "":
-            print("Usage: save the currently loaded configuration to <filename>")
+            print("Usage: save the currently loaded configuration to <filename> with .json extension")
+            return
+        if filename[-5:] != ".json":
+            print("File name must include .json extension")
+            return
         if not self.config == None:
             # opens specified file and writes config data onto it
             with open(filename, "w") as file:
-                #json.dump(self.config, file, indent=4)
-                file.write(self.config)
+                file.write(self.config.model_dump_json())
             print("Config data successfully saved to " + filename)
         else:
             print("There is no currently loaded config data to save.")
@@ -151,8 +154,12 @@ class SchedulerShell(Cmd):
             print("Usage: validate the contents of config file <filename>")
             return
         # reads specified file and validates its contents
-        with open(filename, "r") as data:
-            v_results = validate_combined_config_data(json.loads(data.read()))
+        try:
+            with open(filename, "r") as data:
+                v_results = validate_combined_config_data(json.loads(data.read()))
+        except FileNotFoundError:
+            print("File could not be found.")
+            return
         if not v_results.is_valid:
             print("Config data is invalid.")
             for finding in v_results.diagnostics:
