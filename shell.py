@@ -191,10 +191,14 @@ class SchedulerShell(Cmd):
 
 
     def do_view(self, arg): 
+        if self.config == None:
+            print("There is no currently loaded config data to view.")
+            return
         data = self.config.model_dump()
         # data contains config, time_slot_config, and limit
         # config contains rooms, labs, courses, and faculty
         # time_slot_config contains times and classes
+        print("Maximum generated schedules: " + str(data["limit"]))
         for room in data["config"]["rooms"]:
             print("Room " + room["name"] + ": Capacity of " + str(room["capacity"]))
             if len(room["features"]) != 0:
@@ -213,6 +217,40 @@ class SchedulerShell(Cmd):
                 print("Features include " + features[:-2])
             else:
                 print("Lab has no features.")
+        for course in data["config"]["courses"]:
+            print(course["course_id"] + ":")
+            print(str(course["credits"]) + " credits, capacity of " + str(course["capacity"]))
+            rooms = '' 
+            labs = ''
+            for room in course["room"]:
+                rooms += room + ", "
+            for lab in course["lab"]:
+                labs += lab + ", "
+            labs = "acceptable labs are " + labs
+            print("Teachable in " + rooms[:-2] + ", " + ("no lab" if course["lab"] == [] else labs[:-2]))
+            conflicts = ''
+            for conflict in course["conflicts"]:
+                conflicts += conflict + ", "
+            print("Conflicts with " + conflicts[:-2] if course["conflicts"] != [] else "no other classes")
+            if course["faculty"] != None:
+                faculty_list = ''
+                for faculty in course["faculty"]:
+                    faculty_list += faculty + ", "
+                print("Teachable by " + faculty_list[:-2])
+            else:
+                print("No assigned faculty.")
+        for faculty in data["config"]["faculty"]:
+            print(faculty["name"] + ":")
+            print(str(faculty["minimum_credits"]) + " min credits, " + str(faculty["maximum_credits"]) + " max credits, " + str(faculty["unique_course_limit"]) + " max unique courses, " + "no max days" if faculty["maximum_days"] == None else (str(faculty["maximum_days"]) + " max days"))
+            if len(faculty["mandatory_days"]) != 0:
+                days = ''
+                for day in faculty["mandatory_days"]:
+                    days += day + ", "
+                print("Mandatory days are " + days[:-2])
+            else:
+                print("No mandatory days")
+        print(data["time_slot_config"]["times"])
+        print("Max time gap of " + str(data["time_slot_config"]["max_time_gap"]) + ", min time overlap of " + str(data["time_slot_config"]["min_time_overlap"]))
 
 
     def do_room(self, arg):
