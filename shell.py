@@ -175,10 +175,11 @@ class SchedulerShell(Cmd):
         scheduler = Scheduler(self.config)
 
         found = False
-
+        scheduleNum = 0
         for schedule in scheduler.get_models():
             found = True
-            print("Schedule:")
+            scheduleNum += 1
+            print(f"Schedule {scheduleNum}:")
             for course in schedule:
                 print(course.as_csv())
 
