@@ -120,10 +120,42 @@ def show_general_help():
         print(f"  Usage:   {data['usage']}")
 
     print("\n" + "-" * 55)
-    print("  Type 'help <topic>' for details (e.g., 'help flags').")
+    print("  Type 'help <topic>' for details (e.g., 'help lab' or 'help room').")
     print("  Type 'exit' to quit the shell.")
     print("-" * 55 + "\n")
 
 
+def show_topic_help(topic):
+    topic_key = topic.lower().strip()
+    data = HELP_TOPICS.get(topic_key)
+
+    if not data:
+        print(f"\nUnknown help topic '{topic}'.")
+        print(f"Available topics: {', '.join(HELP_TOPICS.keys())}\n")
+        return
+
+    print("\n" + "=" * 50)
+    print(f"  {data['title']}")
+    print("=" * 50)
+    print(f"Summary: {data['summary']}")
+    print(f"Usage:   {data['usage']}\n")
+
+    print("Commands:")
+
+    for cmd_name, cmd_desc in data["commands"].items():
+        print(f"  {topic_key} {cmd_name:<8} - {cmd_desc}")
+
+    if "flags_reference" in data:
+        print("\nValid Flags Reference:")
+        for flag_name, flag_desc in data["flags_reference"]:
+            print(f"  - {flag_name:<16} : {flag_desc}")
+
+    print("-" * 50 + "\n")
+
+
 def help_handler(shell, arg=""):
-    show_general_help()
+    topic = arg.strip()
+    if topic:
+        show_topic_help(topic)
+    else:
+        show_general_help()

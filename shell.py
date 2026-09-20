@@ -3,7 +3,7 @@ To test
 new ____.json creates empty config
 course add ___.json adds info to course section of selected json
 load ___.json loads into scheduler
-generate makes schedule
+generate makes schedule dont need to specify the file automatically uses what was loaded in
 
 
 
@@ -30,6 +30,9 @@ import room_commands
 import lab_commands
 import course_commands
 import faculty_commands
+import times_commands
+import optimizer_commands
+import limit_commands
 import help
 
 """
@@ -199,6 +202,18 @@ class SchedulerShell(Cmd):
 
     def do_faculty(self, arg):
         faculty_commands.faculty_handler(self, arg)
+    
+    def do_times(self,arg):
+        times_commands.times_handler(self,arg)
+        
+    def do_classes(self,arg):
+        times_commands.classes_handler(self,arg)
+        
+    def do_optimizer(self,arg):
+        optimizer_commands.optimizer_handler(self,arg)
+        
+    def do_limit(self, arg):
+        limit_commands.limit_handler(self,arg)
         
     def do_help(self, arg):
         help.help_handler(self,arg)

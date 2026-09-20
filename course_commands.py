@@ -6,6 +6,7 @@ from scheduler.config import (
     CourseConfig,
 )
 """
+VALID_MODALITIES = {"in_person", "online", "hybrid"}
 
 
 #Loops so user is reprompted on invalid input
@@ -89,7 +90,6 @@ def course_add(shell, filename):
             lambda v: _parse_int(v, min_value=1),
         )
     
-        VALID_MODALITIES = {"in_person", "online", "hybrid"}
 
         def validate_modality(v):
             v_clean = v.lower()
