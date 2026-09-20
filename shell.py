@@ -33,6 +33,7 @@ import faculty_commands
 import times_commands
 import optimizer_commands
 import limit_commands
+import help
 
 """
 from scheduler import (
@@ -63,7 +64,7 @@ audit = scheduler.audit_schedule(first_schedule)
 
 
 class SchedulerShell(Cmd):
-    intro = "Welcome to the Scheduler Shell. Type help or ? to list commands.\n"
+    intro = "Welcome to the Scheduler Shell. Type help to list commands.\n"
     prompt = "scheduler> "
     def __init__(self):
         super().__init__()
@@ -279,6 +280,10 @@ class SchedulerShell(Cmd):
         
     def do_limit(self, arg):
         limit_commands.limit_handler(self,arg)
+        
+    def do_help(self, arg):
+        help.help_handler(self,arg)
+        
 
     def do_exit(self, arg):
         return True
