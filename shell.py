@@ -191,7 +191,28 @@ class SchedulerShell(Cmd):
 
 
     def do_view(self, arg): 
-        pass
+        data = self.config.model_dump()
+        # data contains config, time_slot_config, and limit
+        # config contains rooms, labs, courses, and faculty
+        # time_slot_config contains times and classes
+        for room in data["config"]["rooms"]:
+            print("Room " + room["name"] + ": Capacity of " + str(room["capacity"]))
+            if len(room["features"]) != 0:
+                features = ''
+                for feature in room["features"]:
+                    features += feature + ", "
+                print("Features include " + features[:-2])
+            else:
+                print("Room has no features.")
+        for room in data["config"]["labs"]:
+            print(room["name"] + " Lab: Capacity of " + str(room["capacity"]))
+            if len(room["features"]) != 0:
+                features = ''
+                for feature in room["features"]:
+                    features += feature + ", "
+                print("Features include " + features[:-2])
+            else:
+                print("Lab has no features.")
 
 
     def do_room(self, arg):
