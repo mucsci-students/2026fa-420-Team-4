@@ -19,6 +19,7 @@ Validate - check docs
 
 
 import json
+import os
 from cmd import Cmd
 from scheduler import (
     Scheduler,
@@ -79,6 +80,9 @@ class SchedulerShell(Cmd):
 
         if filename == "":
             print("Usage: new <filename>.json")
+            return
+        elif os.path.exists(filename):
+            print(f"File already exists: {filename}")
             return
         else:
             empty_config = {
@@ -161,8 +165,8 @@ class SchedulerShell(Cmd):
         try:
             with open(filename, "r") as data:
                 v_results = validate_combined_config_data(json.loads(data.read()))
-        except FileNotFoundError:
-            print("File could not be found.")
+        except Exception:
+            print("An error occurred. File may not exist or may not be a valid config file.")
             return
         if not v_results.is_valid:
             print("Config data is invalid.")
