@@ -30,6 +30,7 @@ import room_commands
 import lab_commands
 import course_commands
 import faculty_commands
+import help
 
 """
 from scheduler import (
@@ -198,6 +199,9 @@ class SchedulerShell(Cmd):
 
     def do_faculty(self, arg):
         faculty_commands.faculty_handler(self, arg)
+        
+    def do_help(self, arg):
+        help.help_handler(self,arg)
         
 
     def do_exit(self, arg):
