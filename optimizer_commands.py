@@ -11,6 +11,7 @@ VALID_OPTIMIZER_FLAGS = [
 ]
 
 
+# Loops so user is reprompted on invalid input instead of kicked out
 def _prompt_input(prompt_text, validator_func, default=None):
     while True:
         try:
@@ -47,7 +48,7 @@ def _save_data(filename, data):
         json.dump(data, f, indent=4)
 
 
-
+# Add optimizer flag to given config
 def optimizer_add(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -82,7 +83,9 @@ def optimizer_add(shell, filename):
 
             return raw_list
 
-        flags_to_add = _prompt_input("Enter flag(s) to add (comma-separated): ", validate_add_input)
+        flags_to_add = _prompt_input(
+            "Enter flag(s) to add (comma-separated): ", validate_add_input
+        )
 
         updated_flags = current_flags + flags_to_add
         data["optimizer_flags"] = validate_flags_list(updated_flags)
@@ -95,6 +98,7 @@ def optimizer_add(shell, filename):
         print(f"Add failed: {error}")
 
 
+# List the flags active on the given config
 def optimizer_list(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -121,6 +125,7 @@ def optimizer_list(shell, filename):
         print(f"List failed: {error}")
 
 
+# Update the optimizer flags on the given config
 def optimizer_update(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -133,7 +138,9 @@ def optimizer_update(shell, filename):
 
         print("\n--- Update Optimizer Flags ---")
         print("Valid flags:", ", ".join(VALID_OPTIMIZER_FLAGS))
-        print("Enter comma-separated flags, or press Enter for [] (no extra optimization).\n")
+        print(
+            "Enter comma-separated flags, or press Enter for [] (no extra optimization).\n"
+        )
 
         def parse_flags_str(v):
             if not v:
@@ -156,6 +163,7 @@ def optimizer_update(shell, filename):
         print(f"Update failed: {error}")
 
 
+# Remove a flag from the given config
 def optimizer_remove(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -183,7 +191,9 @@ def optimizer_remove(shell, filename):
                 if item.isdigit():
                     idx = int(item) - 1
                     if not (0 <= idx < len(current_flags)):
-                        raise ValueError(f"Index {item} out of range (1-{len(current_flags)})")
+                        raise ValueError(
+                            f"Index {item} out of range (1-{len(current_flags)})"
+                        )
                     to_remove.add(current_flags[idx])
                 else:
                     if item not in current_flags:
@@ -208,7 +218,7 @@ def optimizer_remove(shell, filename):
         print(f"Remove failed: {error}")
 
 
-
+# Handler for optimizer flag commands
 def optimizer_handler(shell, arg):
     parts = arg.split()
     if len(parts) < 2:
@@ -227,4 +237,6 @@ def optimizer_handler(shell, arg):
     elif command == "remove":
         optimizer_remove(shell, filename)
     else:
-        print("Invalid command. Usage: optimizer <add|list|update|remove> <filename.json>")
+        print(
+            "Invalid command. Usage: optimizer <add|list|update|remove> <filename.json>"
+        )

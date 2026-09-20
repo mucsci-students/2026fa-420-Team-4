@@ -6,8 +6,8 @@ VALID_DELIVERIES = {"in_person", "online"}
 TIME_REGEX = re.compile(r"^([0-1][0-9]|2[0-3]):[0-5][0-9]$")
 
 
+# Loops so user is reprompted on invalid input instead of kicked out
 def _prompt_input(prompt_text, validator_func, default=None):
-    """Loop continuously until the user enters a valid input."""
     while True:
         try:
             raw_val = input(prompt_text).strip()
@@ -94,8 +94,10 @@ def _get_classes_list(data):
     return [], "time_slot_config"
 
 
-#time blocks - times
+# Time Blocks for use with "times" commands
 
+
+# List the time blocks on a given config
 def times_list(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -127,6 +129,7 @@ def times_list(shell, filename):
         print(f"List failed: {error}")
 
 
+# Update the time blocks on the given config
 def times_update(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -188,13 +191,8 @@ def times_update(shell, filename):
         print(f"Update failed: {error}")
 
 
+# Class pattern for use with "classes" command
 
-
-
-
-
-
-#class pattern - classes
 
 def _prompt_meetings():
     """Prompts for a list of meetings for a class pattern."""
@@ -268,6 +266,7 @@ def _prompt_meetings():
     return meetings
 
 
+# Add a class pattern to the given config
 def classes_add(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -328,6 +327,7 @@ def classes_add(shell, filename):
         print(f"Failed to add class pattern: {error}")
 
 
+# List the class patterns in the given config
 def classes_list(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -368,6 +368,7 @@ def classes_list(shell, filename):
         print(f"List failed: {error}")
 
 
+# Remove a class pattern in the given config
 def classes_remove(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -403,6 +404,7 @@ def classes_remove(shell, filename):
         print(f"Remove failed: {error}")
 
 
+# Update deatils of a class pattern in the given config
 def classes_update(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -473,6 +475,7 @@ def classes_update(shell, filename):
         print(f"Update failed: {error}")
 
 
+# Handler for times commands
 def times_handler(shell, arg):
     parts = arg.split()
     if len(parts) < 2:
@@ -490,6 +493,7 @@ def times_handler(shell, arg):
         print("Invalid command. Usage: times <list|update> <filename.json>")
 
 
+# Handler for classes commands
 def classes_handler(shell, arg):
     parts = arg.split()
     if len(parts) < 2:

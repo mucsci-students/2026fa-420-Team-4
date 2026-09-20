@@ -1,3 +1,4 @@
+# List of possible help topics
 HELP_TOPICS = {
     "times": {
         "title": "TIME BLOCKS (times)",
@@ -171,6 +172,7 @@ HELP_TOPICS = {
 }
 
 
+# Shows all commands
 def show_general_help():
     print("\n" + "=" * 55)
     print("           SCHEDULER CLI COMMAND REFERENCE")
@@ -187,6 +189,7 @@ def show_general_help():
     print("-" * 55 + "\n")
 
 
+# Only shows help for specific command
 def show_topic_help(topic):
     topic_key = topic.lower().strip()
     data = HELP_TOPICS.get(topic_key)
@@ -219,6 +222,7 @@ def show_topic_help(topic):
     print("-" * 50 + "\n")
 
 
+# Handler for help commands
 def help_handler(shell, arg=""):
     topic = arg.strip()
     if topic:

@@ -1,15 +1,10 @@
 import json
 
-"""
-from scheduler.config import (
-    CombinedConfig,
-    CourseConfig,
-)
-"""
+# Valid class modalities
 VALID_MODALITIES = {"in_person", "online", "hybrid"}
 
 
-#Loops so user is reprompted on invalid input
+# Loops so user is reprompted on invalid input instead of kicked out
 def _prompt_input(prompt_text, validator_func, default=None):
     while True:
         try:
@@ -58,6 +53,7 @@ def _parse_list(val, allow_empty=True, exclude_item=None):
     return items
 
 
+# Add a course to the given config file
 def course_add(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -89,7 +85,6 @@ def course_add(shell, filename):
             "Enter capacity (positive integer): ",
             lambda v: _parse_int(v, min_value=1),
         )
-    
 
         def validate_modality(v):
             v_clean = v.lower()
@@ -183,6 +178,7 @@ def course_add(shell, filename):
         print(f"Failed to add course due to system error: {error}")
 
 
+# List the course in the selected config file
 def course_list(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -221,6 +217,7 @@ def course_list(shell, filename):
         print(f"List failed: {error}")
 
 
+# Remove a course from the given config
 def course_remove(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -284,6 +281,7 @@ def course_remove(shell, filename):
         print(f"Remove failed: {error}")
 
 
+# Update a course in the given config
 def course_update(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -438,6 +436,7 @@ def course_update(shell, filename):
         print(f"Update failed: {error}")
 
 
+# Handler for course commands
 def course_handler(shell, arg):
     parts = arg.split()
     if len(parts) < 2:

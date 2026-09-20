@@ -1,11 +1,3 @@
-"""
-To test
-new ____.json creates empty config
-course add ___.json adds info to course section of selected json
-load ___.json loads into scheduler
-generate makes schedule dont need to specify the file automatically uses what was loaded in
-"""
-
 import json
 from cmd import Cmd
 from scheduler import (
@@ -34,7 +26,8 @@ class SchedulerShell(Cmd):
         self.filename: str | None = None
 
 
-#Creates an empty config to load in
+
+    #Creates an empty config to load into the scheduler
     def do_new(self,arg):
         filename = arg.strip().strip("\"'")
 
@@ -92,8 +85,10 @@ class SchedulerShell(Cmd):
                 f"Error loading configuration: "
                 f"{error}"
             )
+           
+           
             
-            
+    #Saves config file        
     def do_save(self, arg):
         filename = arg.strip()
         if filename == "":
@@ -110,6 +105,9 @@ class SchedulerShell(Cmd):
         else:
             print("There is no currently loaded config data to save.")
 
+
+
+    #Validates config file
     def do_validate(self, arg):
         # mostly gotten from the diagnostics and auditing section
         # of the scheduler documentation linked below
@@ -134,8 +132,9 @@ class SchedulerShell(Cmd):
             print(v_results.configuration_fingerprint)
     
     
-#Generates schedules based on the loaded .json
-#No need to pass anything in just type generate to make schedules
+    
+    #Generates schedules based on the loaded .json
+    #No need to pass anything in just type generate to make schedules
     def do_generate(self, arg):
         if self.config is None:
             print("No configuration loaded.")
@@ -155,7 +154,7 @@ class SchedulerShell(Cmd):
         if not found:
             print("No schedules found.")
 
-
+    #Prints generated schedules
     def do_view(self, arg): 
         if self.config == None:
             print("There is no currently loaded config data to view.")
@@ -219,6 +218,9 @@ class SchedulerShell(Cmd):
         print("Max time gap of " + str(data["time_slot_config"]["max_time_gap"]) + ", min time overlap of " + str(data["time_slot_config"]["min_time_overlap"]))
 
 
+
+
+    #Handlers for commands that modify the config file + help and exit commands
     def do_room(self, arg):
         room_commands.room_handler(self, arg)
 

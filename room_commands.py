@@ -5,8 +5,8 @@ VALID_DAYS = ["MON", "TUE", "WED", "THU", "FRI"]
 TIME_REGEX = re.compile(r"^([0-1][0-9]|2[0-3]):[0-5][0-9]$")
 
 
+# Loops so user is reprompted on invalid input instead of kicked out
 def _prompt_input(prompt_text, validator_func, default=None):
-    """Loop continuously until the user enters a valid input."""
     while True:
         try:
             raw_val = input(prompt_text).strip()
@@ -80,9 +80,12 @@ def _prompt_room_times():
     if not is_restricted:
         return None  # Unrestricted room availability
 
-    print("\n-- Enter Availability Windows (e.g. 08:00-12:00, 13:00-17:00 | Press Enter to skip day) --")
+    print(
+        "\n-- Enter Availability Windows (e.g. 08:00-12:00, 13:00-17:00 | Press Enter to skip day) --"
+    )
     times = {}
     for day in VALID_DAYS:
+
         def validate_ranges(val):
             if not val:
                 return []
@@ -100,6 +103,7 @@ def _prompt_room_times():
     return times
 
 
+# Add a room to the given config
 def room_add(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -156,6 +160,7 @@ def room_add(shell, filename):
         print(f"Failed to add room: {error}")
 
 
+# List the rooms in the given config
 def room_list(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -176,7 +181,7 @@ def room_list(shell, filename):
             r_name = r.get("name", "N/A")
             cap = r.get("capacity", "N/A")
             feats = ", ".join(r.get("features", [])) or "None"
-            
+
             t_data = r.get("times")
             if t_data is None:
                 t_str = "Unrestricted (null)"
@@ -193,6 +198,7 @@ def room_list(shell, filename):
         print(f"List failed: {error}")
 
 
+# Remove aa room from the given config
 def room_remove(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -231,6 +237,7 @@ def room_remove(shell, filename):
         print(f"Remove failed: {error}")
 
 
+# Update a room's details in the given config
 def room_update(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -306,6 +313,7 @@ def room_update(shell, filename):
         print(f"Update failed: {error}")
 
 
+# Handler for room commands
 def room_handler(shell, arg):
     parts = arg.split()
     if len(parts) < 2:

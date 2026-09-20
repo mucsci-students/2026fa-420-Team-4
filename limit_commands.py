@@ -3,6 +3,7 @@ import json
 DEFAULT_LIMIT = 10
 
 
+# Loops so user is reprompted on invalid input instead of kicked out
 def _prompt_input(prompt_text, validator_func, default=None):
     while True:
         try:
@@ -36,6 +37,7 @@ def _save_data(filename, data):
         json.dump(data, f, indent=4)
 
 
+# Add a generation limit to the given config
 def limit_add(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -45,7 +47,9 @@ def limit_add(shell, filename):
         data = _load_data(filename)
 
         if "limit" in data:
-            print(f"\nLimit is already configured as {data['limit']}. Use 'update' to change it.")
+            print(
+                f"\nLimit is already configured as {data['limit']}. Use 'update' to change it."
+            )
             return
 
         print("\n--- Add Schedule Generation Limit ---")
@@ -64,6 +68,7 @@ def limit_add(shell, filename):
         print(f"Add limit failed: {error}")
 
 
+# Display the current generation limit on the given config
 def limit_list(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -83,6 +88,7 @@ def limit_list(shell, filename):
         print(f"List limit failed: {error}")
 
 
+# Update the generation limit on the given config
 def limit_update(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -108,6 +114,7 @@ def limit_update(shell, filename):
         print(f"Update limit failed: {error}")
 
 
+# Remove the generation limit on the given config
 def limit_remove(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -117,19 +124,23 @@ def limit_remove(shell, filename):
         data = _load_data(filename)
 
         if "limit" not in data:
-            print(f"\nNo explicit limit found in configuration. Already using the default ({DEFAULT_LIMIT}).")
+            print(
+                f"\nNo explicit limit found in configuration. Already using the default ({DEFAULT_LIMIT})."
+            )
             return
 
         removed_val = data.pop("limit")
         _save_data(filename, data)
 
-        print(f"\nSuccessfully removed limit ({removed_val}). Default is ({DEFAULT_LIMIT}).")
+        print(
+            f"\nSuccessfully removed limit ({removed_val}). Default is ({DEFAULT_LIMIT})."
+        )
 
     except Exception as error:
         print(f"Remove limit failed: {error}")
 
 
-
+# Handler for limit commands
 def limit_handler(shell, arg):
     parts = arg.split()
     if len(parts) < 2:
