@@ -64,7 +64,7 @@ audit = scheduler.audit_schedule(first_schedule)
 
 
 class SchedulerShell(Cmd):
-    intro = "Welcome to the Scheduler Shell. Type help or ? to list commands.\n"
+    intro = "Welcome to the Scheduler Shell. Type help to list commands.\n"
     prompt = "scheduler> "
     def __init__(self):
         super().__init__()

@@ -202,18 +202,15 @@ def show_topic_help(topic):
     print(f"Summary: {data['summary']}")
     print(f"Usage:   {data['usage']}\n")
 
-    # Render description if present (single-action commands)
     if "description" in data:
         print("Details:")
         print(f"  {data['description']}\n")
 
-    # Render subcommands if present (resource commands)
     if "commands" in data:
         print("Commands:")
         for cmd_name, cmd_desc in data["commands"].items():
             print(f"  {topic_key} {cmd_name:<8} - {cmd_desc}")
 
-    # Render flags reference list if present
     if "flags_reference" in data:
         print("\nValid Flags Reference:")
         for flag_name, flag_desc in data["flags_reference"]:
