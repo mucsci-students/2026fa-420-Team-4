@@ -5,10 +5,16 @@
       {        "course_id": "CS101",
         "credits": 4,
         "capacity": 30,
-        "room": ["R1"],
-        "lab": ["L1"],
+        "room": [
+          "R1"
+        ],
+        "lab": [
+          "L1"
+        ],
         "conflicts": [],
-        "faculty": ["F1"]
+        "faculty": [
+          "F1"
+        ]
       }
     ],
     "faculty": [      {
@@ -17,11 +23,21 @@
         "minimum_credits": 4,
         "unique_course_limit": 1,
         "times": {
-          "MON": ["08:00-20:00"],
-          "TUE": ["08:00-20:00"],
-          "WED": ["08:00-20:00"],
-          "THU": ["08:00-20:00"],
-          "FRI": ["08:00-20:00"]
+          "MON": [
+            "08:00-20:00"
+          ],
+          "TUE": [
+            "08:00-20:00"
+          ],
+          "WED": [
+            "08:00-20:00"
+          ],
+          "THU": [
+            "08:00-20:00"
+          ],
+          "FRI": [
+            "08:00-20:00"
+          ]
         }
       }
     ]
@@ -37,8 +53,16 @@
       {
         "credits": 4,
         "meetings": [
-          { "day": "MON", "duration": 110, "lab": true },
-          { "day": "WED", "duration": 110, "lab": false }
+          {
+            "day": "MON",
+            "duration": 110,
+            "lab": true
+          },
+          {
+            "day": "WED",
+            "duration": 110,
+            "lab": false
+          }
         ]
       }
     ]

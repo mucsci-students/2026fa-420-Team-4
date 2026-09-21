@@ -5,8 +5,8 @@ VALID_DAYS = ["MON", "TUE", "WED", "THU", "FRI"]
 TIME_REGEX = re.compile(r"^([0-1][0-9]|2[0-3]):[0-5][0-9]$")
 
 
+# Loops so user is reprompted on invalid input instead of kicked out
 def _prompt_input(prompt_text, validator_func, default=None):
-    """Loop continuously until the user enters a valid input."""
     while True:
         try:
             raw_val = input(prompt_text).strip()
@@ -89,9 +89,12 @@ def _prompt_lab_times():
     if not is_restricted:
         return None  # Unrestricted lab availability (null)
 
-    print("\n-- Enter Availability Windows (e.g. 08:00-12:00, 13:00-17:00 | Press Enter to skip day) --")
+    print(
+        "\n-- Enter Availability Windows (e.g. 08:00-12:00, 13:00-17:00 | Press Enter to skip day) --"
+    )
     times = {}
     for day in VALID_DAYS:
+
         def validate_ranges(val):
             if not val:
                 return []
@@ -109,6 +112,7 @@ def _prompt_lab_times():
     return times
 
 
+# Adds a lab to the given config
 def lab_add(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -165,6 +169,7 @@ def lab_add(shell, filename):
         print(f"Failed to add lab: {error}")
 
 
+# Lists the labs in the given congif
 def lab_list(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -202,6 +207,7 @@ def lab_list(shell, filename):
         print(f"List failed: {error}")
 
 
+# Removes labs from the given config
 def lab_remove(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -237,6 +243,7 @@ def lab_remove(shell, filename):
         print(f"Remove failed: {error}")
 
 
+# Updates a lab in the given config
 def lab_update(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -312,6 +319,7 @@ def lab_update(shell, filename):
         print(f"Update failed: {error}")
 
 
+# Handler for lab commands
 def lab_handler(shell, arg):
     parts = arg.split()
     if len(parts) < 2:

@@ -5,8 +5,8 @@ VALID_DAYS = ["MON", "TUE", "WED", "THU", "FRI"]
 TIME_REGEX = re.compile(r"^([0-1][0-9]|2[0-3]):[0-5][0-9]$")
 
 
+# Loops so user is reprompted on invalid input instead of kicked out
 def _prompt_input(prompt_text, validator_func, default=None):
-    """Loop continuously until the user enters a valid input."""
     while True:
         try:
             raw_val = input(prompt_text).strip()
@@ -56,9 +56,12 @@ def _parse_time_range(range_str):
 
 def _prompt_times_dict():
     """Prompts for daily availability ranges."""
-    print("\n-- Enter Availability Times (e.g. 09:00-12:00, 14:00-17:00 | Press Enter to skip day) --")
+    print(
+        "\n-- Enter Availability Times (e.g. 09:00-12:00, 14:00-17:00 | Press Enter to skip day) --"
+    )
     times = {}
     for day in VALID_DAYS:
+
         def validate_ranges(val):
             if not val:
                 return []
@@ -78,7 +81,9 @@ def _prompt_times_dict():
 
 def _prompt_preferences_dict(prompt_label):
     """Prompts for preference mapping with scores 0-10."""
-    print(f"\n-- Enter {prompt_label} Preferences (format: KEY:SCORE with score from 0-10, e.g. CS101:10, Room A:5 | Press Enter to skip) --")
+    print(
+        f"\n-- Enter {prompt_label} Preferences (format: KEY:SCORE with score from 0-10, e.g. CS101:10, Room A:5 | Press Enter to skip) --"
+    )
 
     def validate_prefs(val):
         if not val:
@@ -103,6 +108,7 @@ def _prompt_preferences_dict(prompt_label):
     )
 
 
+# Add faculty to the given config
 def faculty_add(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -133,7 +139,9 @@ def faculty_add(shell, filename):
         def validate_max_credits(v):
             max_c = _parse_int(v, min_value=0)
             if max_c < min_credits:
-                raise ValueError(f"maximum_credits ({max_c}) must be >= minimum_credits ({min_credits})")
+                raise ValueError(
+                    f"maximum_credits ({max_c}) must be >= minimum_credits ({min_credits})"
+                )
             return max_c
 
         max_credits = _prompt_input("Maximum credits: ", validate_max_credits)
@@ -152,14 +160,18 @@ def faculty_add(shell, filename):
             days = [d.strip().upper() for d in v.split(",") if d.strip()]
             invalid_days = [d for d in days if d not in VALID_DAYS]
             if invalid_days:
-                raise ValueError(f"Invalid day(s): {', '.join(invalid_days)}. Allowed: {', '.join(VALID_DAYS)}")
-            
+                raise ValueError(
+                    f"Invalid day(s): {', '.join(invalid_days)}. Allowed: {', '.join(VALID_DAYS)}"
+                )
+
             if len(days) != len(set(days)):
                 raise ValueError("mandatory_days cannot contain duplicate entries")
 
             missing_from_times = set(days) - available_days
             if missing_from_times:
-                raise ValueError(f"Mandatory days {list(missing_from_times)} are not present in specified 'times' availability")
+                raise ValueError(
+                    f"Mandatory days {list(missing_from_times)} are not present in specified 'times' availability"
+                )
             return days
 
         mandatory_days = _prompt_input(
@@ -171,7 +183,9 @@ def faculty_add(shell, filename):
         def validate_max_days(v):
             max_d = _parse_int(v, min_value=0, max_value=5)
             if max_d < len(mandatory_days):
-                raise ValueError(f"maximum_days ({max_d}) cannot be less than mandatory_days count ({len(mandatory_days)})")
+                raise ValueError(
+                    f"maximum_days ({max_d}) cannot be less than mandatory_days count ({len(mandatory_days)})"
+                )
             return max_d
 
         maximum_days = _prompt_input(
@@ -211,6 +225,7 @@ def faculty_add(shell, filename):
         print(f"Failed to add faculty: {error}")
 
 
+# List faculty in the current config
 def faculty_list(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -246,6 +261,7 @@ def faculty_list(shell, filename):
         print(f"List failed: {error}")
 
 
+# REmove faculty from the given config
 def faculty_remove(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -284,6 +300,7 @@ def faculty_remove(shell, filename):
         print(f"Remove failed: {error}")
 
 
+# Update faculty in the given config
 def faculty_update(shell, filename):
     if filename is None:
         print("No configuration file selected.")
@@ -338,7 +355,9 @@ def faculty_update(shell, filename):
         def validate_max_credits(v):
             max_c = _parse_int(v, min_value=0)
             if max_c < f_entry["minimum_credits"]:
-                raise ValueError(f"maximum_credits ({max_c}) must be >= minimum_credits ({f_entry['minimum_credits']})")
+                raise ValueError(
+                    f"maximum_credits ({max_c}) must be >= minimum_credits ({f_entry['minimum_credits']})"
+                )
             return max_c
 
         f_entry["maximum_credits"] = _prompt_input(
@@ -369,14 +388,18 @@ def faculty_update(shell, filename):
             days = [d.strip().upper() for d in v.split(",") if d.strip()]
             invalid_days = [d for d in days if d not in VALID_DAYS]
             if invalid_days:
-                raise ValueError(f"Invalid day(s): {', '.join(invalid_days)}. Allowed: {', '.join(VALID_DAYS)}")
+                raise ValueError(
+                    f"Invalid day(s): {', '.join(invalid_days)}. Allowed: {', '.join(VALID_DAYS)}"
+                )
 
             if len(days) != len(set(days)):
                 raise ValueError("mandatory_days cannot contain duplicate entries")
 
             missing = set(days) - available_days
             if missing:
-                raise ValueError(f"Mandatory days {list(missing)} must be present in 'times' availability")
+                raise ValueError(
+                    f"Mandatory days {list(missing)} must be present in 'times' availability"
+                )
             return days
 
         mand_curr = ", ".join(f_entry.get("mandatory_days", []))
@@ -389,7 +412,9 @@ def faculty_update(shell, filename):
         def validate_max_days(v):
             max_d = _parse_int(v, min_value=0, max_value=5)
             if max_d < len(f_entry["mandatory_days"]):
-                raise ValueError(f"maximum_days ({max_d}) cannot be less than mandatory_days count ({len(f_entry['mandatory_days'])})")
+                raise ValueError(
+                    f"maximum_days ({max_d}) cannot be less than mandatory_days count ({len(f_entry['mandatory_days'])})"
+                )
             return max_d
 
         f_entry["maximum_days"] = _prompt_input(
@@ -417,6 +442,7 @@ def faculty_update(shell, filename):
         print(f"Update failed: {error}")
 
 
+# Handler for faculty commands
 def faculty_handler(shell, arg):
     parts = arg.split()
     if len(parts) < 2:
@@ -435,4 +461,6 @@ def faculty_handler(shell, arg):
     elif command == "update":
         faculty_update(shell, filename)
     else:
-        print("Invalid command. Usage: faculty <add|list|remove|update> <filename.json>")
+        print(
+            "Invalid command. Usage: faculty <add|list|remove|update> <filename.json>"
+        )
