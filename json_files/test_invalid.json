@@ -219,6 +219,20 @@
                 "reserve_room_during_lab": false,
                 "conflicts": [],
                 "faculty": null
+            },
+            {
+                "course_id": "150",
+                "section_id": "33",
+                "credits": 4,
+                "capacity": 25,
+                "modality": "online",
+                "room": [],
+                "lab": [],
+                "required_room_features": [],
+                "required_lab_features": [],
+                "reserve_room_during_lab": false,
+                "conflicts": [],
+                "faculty": null
             }
         ]
     }

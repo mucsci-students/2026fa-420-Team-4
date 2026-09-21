@@ -79,37 +79,34 @@ class SchedulerShell(Cmd):
         elif os.path.exists(filename):
             print(f"File already exists: {filename}")
             return
-        else:
-            empty_config = {
-                "config": {
-                "rooms": [],
-                "labs": [],
-                "courses": [],
-                "faculty": []
-                },
-                "time_slot_config": {
-                "times": {
-                    "MON": [],
-                    "TUE": [],
-                    "WED": [],
-                    "THU": [],
-                    "FRI": []
-                },
-                "classes": []
-                },
-                "limit": 0,
-                "optimizer_flags": []
-            }
-        with open(filename, "w") as f:
-            json.dump(empty_config, f, indent=4)
-            
-        self.filename = filename
 
-        print(f"Created new config file: {filename}")
+        # make sure .json extension
+        if not filename.endswith(".json"):
+            print(
+                "Error: File name must end with .json extension (e.g., 'new config.json')"
+            )
+            return
 
+        empty_config = {
+            "config": {"rooms": [], "labs": [], "courses": [], "faculty": []},
+            "time_slot_config": {
+                "times": {"MON": [], "TUE": [], "WED": [], "THU": [], "FRI": []},
+                "classes": [],
+            },
+            "limit": 0,
+            "optimizer_flags": [],
+        }
 
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(empty_config, f, indent=4)
 
-    #Load config into scheduler       
+            self.filename = filename
+            print(f"Created new config file: {filename}")
+        except Exception as e:
+            print(f"Error creating file '{filename}': {e}")
+
+    # Load config into scheduler
     def do_load(self, arg):
         filename = arg.strip()
 
@@ -158,7 +155,9 @@ class SchedulerShell(Cmd):
             with open(filename, "r") as data:
                 v_results = validate_combined_config_data(json.loads(data.read()))
         except Exception:
-            print("An error occurred. File may not exist or may not be a valid config file.")
+            print(
+                "An error occurred. File may not exist or may not be a valid config file."
+            )
             return
         if not v_results.is_valid:
             print("Config data is invalid.")
