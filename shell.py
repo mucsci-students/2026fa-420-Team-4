@@ -14,85 +14,117 @@ import times_commands
 import optimizer_commands
 import limit_commands
 import help
+import os
+from json_validator import validate_config_file
 
 
 class SchedulerShell(Cmd):
     intro = "Welcome to the Scheduler Shell. Type help to list commands.\n"
     prompt = "scheduler> "
+
     def __init__(self):
         super().__init__()
 
         self.config: CombinedConfig | None = None
         self.filename: str | None = None
 
+    def precmd(self, line: str) -> str:
+        parts = line.strip().split()
+        if not parts:
+            return line
 
+        cmd_name = parts[0].lower()
 
-    #Creates an empty config to load into the scheduler
-    def do_new(self,arg):
+        # exclude commands that dont need to check schema
+        if cmd_name in ["help", "exit", "new", "view", "generate", "noop"]:
+            return line
+
+        if len(parts) < 2:
+            print(
+                f"\n[Error] Missing target file. Usage: {cmd_name} <subcommand> <filename>.json\n"
+            )
+            return "noop"
+
+        target_file = parts[-1].strip("\"'")
+
+        if not target_file.endswith(".json"):
+            print(
+                f"\n[Error] Invalid target file '{target_file}'. File must end with .json\n"
+            )
+            return "noop"
+
+        if not os.path.exists(target_file):
+            print(
+                f"\n[Error] File '{target_file}' does not exist. Use 'new {target_file}' to create it.\n"
+            )
+            return "noop"
+
+        is_valid, errors = validate_config_file(target_file)
+        if not is_valid:
+            print(f"\n[Validation Error] Cannot perform operation on '{target_file}':")
+            for err in errors:
+                print(f"  - {err}")
+            print("Command aborted.\n")
+            return "noop"
+        return line
+
+    # Creates an empty config to load into the scheduler
+    def do_new(self, arg):
         filename = arg.strip().strip("\"'")
 
         if filename == "":
             print("Usage: new <filename>.json")
             return
-        else:
-            empty_config = {
-                "config": {
-                "rooms": [],
-                "labs": [],
-                "courses": [],
-                "faculty": []
-                },
-                "time_slot_config": {
-                "times": {
-                    "MON": [],
-                    "TUE": [],
-                    "WED": [],
-                    "THU": [],
-                    "FRI": []
-                },
-                "classes": []
-                },
-                "limit": 0,
-                "optimizer_flags": []
-            }
-        with open(filename, "w") as f:
-            json.dump(empty_config, f, indent=4)
-            
-        self.filename = filename
 
-        print(f"Created new config file: {filename}")
+        # make sure .json extension
+        if not filename.endswith(".json"):
+            print(
+                "Error: File name must end with .json extension (e.g., 'new config.json')"
+            )
+            return
 
+        empty_config = {
+            "config": {"rooms": [], "labs": [], "courses": [], "faculty": []},
+            "time_slot_config": {
+                "times": {"MON": [], "TUE": [], "WED": [], "THU": [], "FRI": []},
+                "classes": [],
+            },
+            "limit": 0,
+            "optimizer_flags": [],
+        }
 
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(empty_config, f, indent=4)
 
-    #Load config into scheduler       
+            self.filename = filename
+            print(f"Created new config file: {filename}")
+        except Exception as e:
+            print(f"Error creating file '{filename}': {e}")
+
+    # Load config into scheduler
     def do_load(self, arg):
         filename = arg.strip()
 
         if filename == "":
-            print("Usage: load <filename> with .json extension")
+            print("Usage: load <filename>.json")
             return
 
         try:
-            self.config = load_config_from_file(
-                CombinedConfig,
-                filename
-            )
+            self.config = load_config_from_file(CombinedConfig, filename)
 
             print(f"Loaded {filename}")
 
         except Exception as error:
-            print(
-                f"Error loading configuration: "
-                f"{error}"
-            )
-           
-           
-            
-    #Saves config file        
+            print(f"Error loading configuration: " f"{error}")
+
+    # Saves config file
     def do_save(self, arg):
         filename = arg.strip()
         if filename == "":
-            print("Usage: save the currently loaded configuration to <filename> with .json extension")
+            print(
+                "Usage: save the currently loaded configuration to <filename> with .json extension"
+            )
             return
         if filename[-5:] != ".json":
             print("File name must include .json extension")
@@ -105,9 +137,7 @@ class SchedulerShell(Cmd):
         else:
             print("There is no currently loaded config data to save.")
 
-
-
-    #Validates config file
+    # Validates config file
     def do_validate(self, arg):
         # mostly gotten from the diagnostics and auditing section
         # of the scheduler documentation linked below
@@ -130,18 +160,16 @@ class SchedulerShell(Cmd):
         else:
             print("Config data has been validated.")
             print(v_results.configuration_fingerprint)
-    
-    
-    
-    #Generates schedules based on the loaded .json
-    #No need to pass anything in just type generate to make schedules
+
+    # Generates schedules based on the loaded .json
+    # No need to pass anything in just type generate to make schedules
     def do_generate(self, arg):
         if self.config is None:
             print("No configuration loaded.")
             return
 
         scheduler = Scheduler(self.config)
-    
+
         found = False
         scheduleNum = 0
         for schedule in scheduler.get_models():
@@ -154,8 +182,8 @@ class SchedulerShell(Cmd):
         if not found:
             print("No schedules found.")
 
-    #Prints generated schedules
-    def do_view(self, arg): 
+    # Prints generated schedules
+    def do_view(self, arg):
         if self.config == None:
             print("There is no currently loaded config data to view.")
             return
@@ -167,7 +195,7 @@ class SchedulerShell(Cmd):
         for room in data["config"]["rooms"]:
             print("Room " + room["name"] + ": Capacity of " + str(room["capacity"]))
             if len(room["features"]) != 0:
-                features = ''
+                features = ""
                 for feature in room["features"]:
                     features += feature + ", "
                 print("Features include " + features[:-2])
@@ -176,7 +204,7 @@ class SchedulerShell(Cmd):
         for room in data["config"]["labs"]:
             print(room["name"] + " Lab: Capacity of " + str(room["capacity"]))
             if len(room["features"]) != 0:
-                features = ''
+                features = ""
                 for feature in room["features"]:
                     features += feature + ", "
                 print("Features include " + features[:-2])
@@ -184,21 +212,34 @@ class SchedulerShell(Cmd):
                 print("Lab has no features.")
         for course in data["config"]["courses"]:
             print(course["course_id"] + ":")
-            print(str(course["credits"]) + " credits, capacity of " + str(course["capacity"]))
-            rooms = '' 
-            labs = ''
+            print(
+                str(course["credits"])
+                + " credits, capacity of "
+                + str(course["capacity"])
+            )
+            rooms = ""
+            labs = ""
             for room in course["room"]:
                 rooms += room + ", "
             for lab in course["lab"]:
                 labs += lab + ", "
             labs = "acceptable labs are " + labs
-            print("Teachable in " + rooms[:-2] + ", " + ("no lab" if course["lab"] == [] else labs[:-2]))
-            conflicts = ''
+            print(
+                "Teachable in "
+                + rooms[:-2]
+                + ", "
+                + ("no lab" if course["lab"] == [] else labs[:-2])
+            )
+            conflicts = ""
             for conflict in course["conflicts"]:
                 conflicts += conflict + ", "
-            print("Conflicts with " + conflicts[:-2] if course["conflicts"] != [] else "no other classes")
+            print(
+                "Conflicts with " + conflicts[:-2]
+                if course["conflicts"] != []
+                else "no other classes"
+            )
             if course["faculty"] != None:
-                faculty_list = ''
+                faculty_list = ""
                 for faculty in course["faculty"]:
                     faculty_list += faculty + ", "
                 print("Teachable by " + faculty_list[:-2])
@@ -206,21 +247,33 @@ class SchedulerShell(Cmd):
                 print("No assigned faculty.")
         for faculty in data["config"]["faculty"]:
             print(faculty["name"] + ":")
-            print(str(faculty["minimum_credits"]) + " min credits, " + str(faculty["maximum_credits"]) + " max credits, " + str(faculty["unique_course_limit"]) + " max unique courses, " + "no max days" if faculty["maximum_days"] == None else (str(faculty["maximum_days"]) + " max days"))
+            print(
+                str(faculty["minimum_credits"])
+                + " min credits, "
+                + str(faculty["maximum_credits"])
+                + " max credits, "
+                + str(faculty["unique_course_limit"])
+                + " max unique courses, "
+                + "no max days"
+                if faculty["maximum_days"] == None
+                else (str(faculty["maximum_days"]) + " max days")
+            )
             if len(faculty["mandatory_days"]) != 0:
-                days = ''
+                days = ""
                 for day in faculty["mandatory_days"]:
                     days += day + ", "
                 print("Mandatory days are " + days[:-2])
             else:
                 print("No mandatory days")
         print(data["time_slot_config"]["times"])
-        print("Max time gap of " + str(data["time_slot_config"]["max_time_gap"]) + ", min time overlap of " + str(data["time_slot_config"]["min_time_overlap"]))
+        print(
+            "Max time gap of "
+            + str(data["time_slot_config"]["max_time_gap"])
+            + ", min time overlap of "
+            + str(data["time_slot_config"]["min_time_overlap"])
+        )
 
-
-
-
-    #Handlers for commands that modify the config file + help and exit commands
+    # Handlers for commands that modify the config file + help and exit commands
     def do_room(self, arg):
         room_commands.room_handler(self, arg)
 
@@ -232,25 +285,28 @@ class SchedulerShell(Cmd):
 
     def do_faculty(self, arg):
         faculty_commands.faculty_handler(self, arg)
-    
-    def do_times(self,arg):
-        times_commands.times_handler(self,arg)
-        
-    def do_classes(self,arg):
-        times_commands.classes_handler(self,arg)
-        
-    def do_optimizer(self,arg):
-        optimizer_commands.optimizer_handler(self,arg)
-        
+
+    def do_times(self, arg):
+        times_commands.times_handler(self, arg)
+
+    def do_classes(self, arg):
+        times_commands.classes_handler(self, arg)
+
+    def do_optimizer(self, arg):
+        optimizer_commands.optimizer_handler(self, arg)
+
     def do_limit(self, arg):
-        limit_commands.limit_handler(self,arg)
-        
+        limit_commands.limit_handler(self, arg)
+
     def do_help(self, arg):
-        help.help_handler(self,arg)
-        
+        help.help_handler(self, arg)
 
     def do_exit(self, arg):
         return True
+
+    def do_noop(self, arg):
+        pass
+
 
 if __name__ == "__main__":
     SchedulerShell().cmdloop()
