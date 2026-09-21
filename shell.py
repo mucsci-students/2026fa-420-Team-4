@@ -1,4 +1,5 @@
 import json
+import os
 from cmd import Cmd
 from scheduler import (
     Scheduler,
@@ -75,34 +76,40 @@ class SchedulerShell(Cmd):
         if filename == "":
             print("Usage: new <filename>.json")
             return
-
-        # make sure .json extension
-        if not filename.endswith(".json"):
-            print(
-                "Error: File name must end with .json extension (e.g., 'new config.json')"
-            )
+        elif os.path.exists(filename):
+            print(f"File already exists: {filename}")
             return
+        else:
+            empty_config = {
+                "config": {
+                "rooms": [],
+                "labs": [],
+                "courses": [],
+                "faculty": []
+                },
+                "time_slot_config": {
+                "times": {
+                    "MON": [],
+                    "TUE": [],
+                    "WED": [],
+                    "THU": [],
+                    "FRI": []
+                },
+                "classes": []
+                },
+                "limit": 0,
+                "optimizer_flags": []
+            }
+        with open(filename, "w") as f:
+            json.dump(empty_config, f, indent=4)
+            
+        self.filename = filename
 
-        empty_config = {
-            "config": {"rooms": [], "labs": [], "courses": [], "faculty": []},
-            "time_slot_config": {
-                "times": {"MON": [], "TUE": [], "WED": [], "THU": [], "FRI": []},
-                "classes": [],
-            },
-            "limit": 0,
-            "optimizer_flags": [],
-        }
+        print(f"Created new config file: {filename}")
 
-        try:
-            with open(filename, "w", encoding="utf-8") as f:
-                json.dump(empty_config, f, indent=4)
 
-            self.filename = filename
-            print(f"Created new config file: {filename}")
-        except Exception as e:
-            print(f"Error creating file '{filename}': {e}")
 
-    # Load config into scheduler
+    #Load config into scheduler       
     def do_load(self, arg):
         filename = arg.strip()
 
@@ -150,8 +157,8 @@ class SchedulerShell(Cmd):
         try:
             with open(filename, "r") as data:
                 v_results = validate_combined_config_data(json.loads(data.read()))
-        except FileNotFoundError:
-            print("File could not be found.")
+        except Exception:
+            print("An error occurred. File may not exist or may not be a valid config file.")
             return
         if not v_results.is_valid:
             print("Config data is invalid.")

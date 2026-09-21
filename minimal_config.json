@@ -1,20 +1,8 @@
 {
-  "config": {
-    "rooms": [
-      {
-        "name": "R1",
-        "capacity": 30
-      }
-    ],
-    "labs": [
-      {
-        "name": "L1",
-        "capacity": 30
-      }
-    ],
+  "config": {    "rooms": [{"name": "R1", "capacity": 30}],
+    "labs": [{"name": "L1", "capacity": 30}],
     "courses": [
-      {
-        "course_id": "CS101",
+      {        "course_id": "CS101",
         "credits": 4,
         "capacity": 30,
         "room": [
@@ -29,8 +17,7 @@
         ]
       }
     ],
-    "faculty": [
-      {
+    "faculty": [      {
         "name": "F1",
         "maximum_credits": 4,
         "minimum_credits": 4,
@@ -55,43 +42,12 @@
       }
     ]
   },
-  "time_slot_config": {
-    "times": {
-      "MON": [
-        {
-          "start": "08:00",
-          "spacing": 60,
-          "end": "20:00"
-        }
-      ],
-      "TUE": [
-        {
-          "start": "08:00",
-          "spacing": 60,
-          "end": "20:00"
-        }
-      ],
-      "WED": [
-        {
-          "start": "08:00",
-          "spacing": 60,
-          "end": "20:00"
-        }
-      ],
-      "THU": [
-        {
-          "start": "08:00",
-          "spacing": 60,
-          "end": "20:00"
-        }
-      ],
-      "FRI": [
-        {
-          "start": "08:00",
-          "spacing": 60,
-          "end": "20:00"
-        }
-      ]
+  "time_slot_config": {    "times": {
+      "MON": [{ "start": "08:00", "spacing": 60, "end": "20:00" }],
+      "TUE": [{ "start": "08:00", "spacing": 60, "end": "20:00" }],
+      "WED": [{ "start": "08:00", "spacing": 60, "end": "20:00" }],
+      "THU": [{ "start": "08:00", "spacing": 60, "end": "20:00" }],
+      "FRI": [{ "start": "08:00", "spacing": 60, "end": "20:00" }]
     },
     "classes": [
       {

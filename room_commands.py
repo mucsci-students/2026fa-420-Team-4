@@ -20,9 +20,18 @@ def _prompt_input(prompt_text, validator_func, default=None):
 
 
 def _clean_str(val, allow_empty=False):
-    if not val and not allow_empty:
+    if val is None:
+        if allow_empty:
+            return None
         raise ValueError("Field cannot be blank or contain only whitespace")
-    return val
+
+    if not isinstance(val, str):
+        raise ValueError("Field must be a string")
+
+    cleaned = val.strip()
+    if not cleaned and not allow_empty:
+        raise ValueError("Field cannot be blank or contain only whitespace")
+    return cleaned
 
 
 def _parse_int(val, min_value=1):
