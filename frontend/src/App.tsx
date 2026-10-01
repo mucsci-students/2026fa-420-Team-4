@@ -1,6 +1,7 @@
 // frontend/src/App.tsx
 import React, { useState } from 'react';
-import { uploadConfig, runGenerator, GeneratedSchedule } from './api';
+import { uploadConfig, runGenerator } from './api';
+import type { GeneratedSchedule } from './api';
 
 export function App() {
   const [file, setFile] = useState<File | null>(null);

@@ -12,6 +12,7 @@ export interface ScheduleCourse {
   [key: string]: any;
 }
 
+// Ensure 'export' is explicitly here:
 export interface GeneratedSchedule {
   schedule_id: number;
   courses: string[];
