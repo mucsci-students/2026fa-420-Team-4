@@ -4,6 +4,10 @@
 
 A Python-based scheduling program for making department schedules.
 
+To Run
+Terminal 1: python -m uv run uvicorn backend.main:app --reload --port 8000
+Terminal 2: After cd into frontend run npm run dev
+
 ## Features
 
 - Create or Load  an existing configuration file
