@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { uploadConfig, runGenerator } from './api';
 import type { GeneratedSchedule } from './api';
 
+/** Render configuration upload, schedule generation, and their results. */
 export function App() {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>('');

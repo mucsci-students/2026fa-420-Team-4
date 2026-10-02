@@ -18,4 +18,5 @@ app.include_router(generator_controller.router)
 
 @app.get("/")
 def root():
+    """Return the API availability status and greeting."""
     return {"status": "online", "message": "Academic Scheduler API active"}

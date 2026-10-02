@@ -9,6 +9,7 @@ router = APIRouter(prefix="/api/config", tags=["Configuration"])
 
 @router.post("/upload")
 async def upload_config(file: UploadFile = File(...)):
+    """Validate an uploaded JSON configuration and store it for scheduling."""
     try:
         content = await file.read()
         data = json.loads(content.decode("utf-8"))
@@ -37,6 +38,7 @@ async def upload_config(file: UploadFile = File(...)):
 
 @router.get("/")
 def get_config():
+    """Return the loaded configuration and status, or an empty configuration."""
     if not store.is_loaded:
         return {"status": "empty", "config": {}}
     return {"status": "loaded", "config": store.raw_config}

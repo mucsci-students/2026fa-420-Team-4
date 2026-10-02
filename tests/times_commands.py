@@ -8,6 +8,7 @@ TIME_REGEX = re.compile(r"^([0-1][0-9]|2[0-3]):[0-5][0-9]$")
 
 # Loops so user is reprompted on invalid input instead of kicked out
 def _prompt_input(prompt_text, validator_func, default=None):
+    """Prompt for validated input, retrying ValueError and using a non-None default for blank input."""
     while True:
         try:
             raw_val = input(prompt_text).strip()
@@ -21,12 +22,14 @@ def _prompt_input(prompt_text, validator_func, default=None):
 
 
 def _clean_str(val, allow_empty=False):
+    """Return the value, raising ValueError if empty values are disallowed."""
     if not val and not allow_empty:
         raise ValueError("Field cannot be blank or contain only whitespace")
     return val
 
 
 def _parse_int(val, min_value=1):
+    """Parse an integer at least min_value, raising ValueError for invalid input."""
     parsed = int(val)
     if parsed < min_value:
         raise ValueError(f"Must be an integer greater than or equal to {min_value}")
@@ -34,6 +37,7 @@ def _parse_int(val, min_value=1):
 
 
 def _parse_list(val, allow_empty=True):
+    """Parse unique, trimmed comma-separated items, enforcing allow_empty."""
     if not val:
         if not allow_empty:
             raise ValueError("List cannot be empty")
@@ -71,6 +75,7 @@ def _parse_time_range(range_str):
 
 
 def _parse_time_str(time_str):
+    """Return a valid 24-hour HH:MM time or raise ValueError."""
     if not TIME_REGEX.match(time_str):
         raise ValueError("Time must be in 24-hour HH:MM format (00:00 to 23:59)")
     return time_str
@@ -99,6 +104,7 @@ def _get_classes_list(data):
 
 # List the time blocks on a given config
 def times_list(shell, filename):
+    """Print weekday time blocks from the selected JSON configuration file."""
     if filename is None:
         print("No configuration file selected.")
         return
@@ -131,6 +137,7 @@ def times_list(shell, filename):
 
 # Update the time blocks on the given config
 def times_update(shell, filename):
+    """Prompt for weekday time blocks and save them to the JSON configuration."""
     if filename is None:
         print("No configuration file selected.")
         return
@@ -149,6 +156,7 @@ def times_update(shell, filename):
             print("Example: 09:00-17:00@60  OR  08:00-12:00@30, 13:00-17:00@30")
 
             def validate_day_blocks(val):
+                """Parse comma-separated HH:MM-HH:MM@SPACING blocks with positive spacing."""
                 raw_blocks = [b.strip() for b in val.split(",") if b.strip()]
                 if not raw_blocks:
                     raise ValueError(f"{day} must contain at least one time block")
@@ -209,6 +217,7 @@ def _prompt_meetings():
             break
 
         def validate_day(v):
+            """Normalize a weekday abbreviation or raise ValueError if unsupported."""
             day_upper = v.strip().upper()
             if day_upper not in VALID_DAYS:
                 raise ValueError(f"Day must be one of {', '.join(VALID_DAYS)}")
@@ -222,6 +231,7 @@ def _prompt_meetings():
         )
 
         def validate_delivery(v):
+            """Normalize a delivery mode or raise ValueError if unsupported."""
             deliv = v.strip().lower()
             if deliv not in VALID_DELIVERIES:
                 raise ValueError(
@@ -242,6 +252,7 @@ def _prompt_meetings():
         )
 
         def validate_meeting_start(v):
+            """Return a valid HH:MM time, or None for blank or null input."""
             if not v or v.lower() == "null":
                 return None
             return _parse_time_str(v)
@@ -268,6 +279,7 @@ def _prompt_meetings():
 
 # Add a class pattern to the given config
 def classes_add(shell, filename):
+    """Prompt for a class pattern and append it to the JSON configuration."""
     if filename is None:
         print("No configuration file selected.")
         return
@@ -284,6 +296,7 @@ def classes_add(shell, filename):
         )
 
         def validate_start_time(v):
+            """Return a valid HH:MM time, or None for blank or null input."""
             if not v or v.lower() == "null":
                 return None
             return _parse_time_str(v)
@@ -329,6 +342,7 @@ def classes_add(shell, filename):
 
 # List the class patterns in the given config
 def classes_list(shell, filename):
+    """Print class patterns and their meetings from the JSON configuration."""
     if filename is None:
         print("No configuration file selected.")
         return
@@ -370,6 +384,7 @@ def classes_list(shell, filename):
 
 # Remove a class pattern in the given config
 def classes_remove(shell, filename):
+    """Prompt for a class pattern to remove and save the JSON configuration."""
     if filename is None:
         print("No configuration file selected.")
         return
@@ -386,6 +401,7 @@ def classes_remove(shell, filename):
         classes_list(shell, filename)
 
         def validate_choice(v):
+            """Convert a valid one-based pattern selection to a zero-based index."""
             idx = int(v) - 1
             if not (0 <= idx < len(classes)):
                 raise ValueError(f"Selection must be between 1 and {len(classes)}")
@@ -406,6 +422,7 @@ def classes_remove(shell, filename):
 
 # Update deatils of a class pattern in the given config
 def classes_update(shell, filename):
+    """Prompt for changes to a selected class pattern and save the configuration."""
     if filename is None:
         print("No configuration file selected.")
         return
@@ -422,6 +439,7 @@ def classes_update(shell, filename):
         classes_list(shell, filename)
 
         def validate_choice(v):
+            """Convert a valid one-based pattern selection to a zero-based index."""
             idx = int(v) - 1
             if not (0 <= idx < len(classes)):
                 raise ValueError(f"Selection must be between 1 and {len(classes)}")
@@ -441,6 +459,7 @@ def classes_update(shell, filename):
         )
 
         def validate_start_time(v):
+            """Return a valid HH:MM time, or None for null input; reject blank input."""
             if v.lower() == "null":
                 return None
             return _parse_time_str(v)
@@ -477,6 +496,7 @@ def classes_update(shell, filename):
 
 # Handler for times commands
 def times_handler(shell, arg):
+    """Dispatch a times list or update command with its configuration filename."""
     parts = arg.split()
     if len(parts) < 2:
         print("Usage: times <list|update> <filename.json>")
@@ -495,6 +515,7 @@ def times_handler(shell, arg):
 
 # Handler for classes commands
 def classes_handler(shell, arg):
+    """Dispatch a class-pattern command with its configuration filename."""
     parts = arg.split()
     if len(parts) < 2:
         print("Usage: classes <add|list|remove|update> <filename.json>")

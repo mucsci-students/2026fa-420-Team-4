@@ -7,6 +7,10 @@ router = APIRouter(prefix="/api/generator", tags=["Generator"])
 
 @router.post("/run")
 def run_generator():
+    """Generate and store schedules from the loaded configuration.
+
+    Raise HTTPException if no configuration is loaded or scheduling fails.
+    """
     if not store.is_loaded or store.config_object is None:
         raise HTTPException(
             status_code=400,
