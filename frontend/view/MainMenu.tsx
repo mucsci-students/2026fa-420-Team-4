@@ -10,9 +10,9 @@ const configMenus = [
   "Meetings",
 ];
 const optimizerFlagOptions = [
-  { value: "faculty_course", label: "Faculty → Course" },
-  { value: "faculty_room", label: "Faculty → Room" },
-  { value: "faculty_lab", label: "Faculty → Lab" },
+  { value: "faculty_course", label: "Faculty → Course Preference" },
+  { value: "faculty_room", label: "Faculty → Room Preference" },
+  { value: "faculty_lab", label: "Faculty → Lab Preference" },
   { value: "same_room", label: "Same Room" },
   { value: "same_lab", label: "Same Lab" },
   { value: "pack_rooms", label: "Pack Rooms" },
@@ -77,22 +77,7 @@ export default function MainMenu() {
             overflowY: "auto",
           }}
         >
-          {" "}
-          {/* View Header */}{" "}
-          <div
-            style={{
-              padding: "6px 12px",
-              marginBottom: 4,
-              color: "#94a3b8",
-              fontSize: 11,
-              fontWeight: "bold",
-              textTransform: "uppercase",
-              letterSpacing: 1,
-            }}
-          >
-            {" "}
-            View{" "}
-          </div>{" "}
+          
           {/* Configuration Editor */}{" "}
           <button
             type="button"
