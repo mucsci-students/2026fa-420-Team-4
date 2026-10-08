@@ -33,8 +33,10 @@ cd 2026fa-420-Team-4
 
 ### 2. Sync the Python environment
 
+
+Use python -m if using venv
 ```bash
-python -m uv sync
+(python -m) uv sync
 ```
 
 ### 3. Install frontend dependencies
@@ -54,9 +56,9 @@ The web application requires the FastAPI backend and React frontend to run simul
 ## Terminal 1 — FastAPI Backend
 
 From the repository root:
-
+Use python -m if using venv
 ```bash
-python -m uv run uvicorn backend.main:app --reload --port 8000
+(python -m) uv run uvicorn backend.main:app --reload --port 8000
 ```
 
 The backend will run at:
