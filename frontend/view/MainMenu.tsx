@@ -18,13 +18,6 @@ const optimizerFlagOptions = [
   { value: "pack_rooms", label: "Pack Rooms" },
   { value: "pack_labs", label: "Pack Labs" },
 ];
-const mockMessages = Array.from(
-  { length: 50 },
-  (_, index) =>
-    `[12:${String(Math.floor(index / 60)).padStart(2, "0")}:${String(
-      index % 60
-    ).padStart(2, "0")}] Mock log message ${index + 1}`
-);
 /** Render navigation and panels for configuration, schedule generation, and viewing. */
 export default function MainMenu() {
   const [activeMenu, setActiveMenu] = useState("Configuration Editor");
