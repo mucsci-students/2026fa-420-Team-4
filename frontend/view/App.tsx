@@ -1,4 +1,4 @@
-// frontend/src/App.tsx
+// frontend/view/App.tsx
 import React, { useState } from 'react';
 import { uploadConfig, runGenerator } from './api';
 import type { GeneratedSchedule } from './api';

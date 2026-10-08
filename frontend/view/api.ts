@@ -1,4 +1,4 @@
-// frontend/src/api.ts
+// frontend/view/api.ts
 import axios from 'axios';
 
 const api = axios.create({
