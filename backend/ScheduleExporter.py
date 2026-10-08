@@ -77,7 +77,7 @@ def _csv_rows(schedules):
 
 
 def _csv_value(value):
-    # Keep structured fields in one CSV cell rather than splitting them into columns.
+    """Encode dictionaries and lists as JSON for a CSV cell; return other values unchanged."""
     if isinstance(value, (dict, list)):
         return json.dumps(value, ensure_ascii=False)
     return value

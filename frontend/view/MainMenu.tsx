@@ -25,6 +25,7 @@ const mockMessages = Array.from(
       index % 60
     ).padStart(2, "0")}] Mock log message ${index + 1}`
 );
+/** Render navigation and panels for configuration, schedule generation, and viewing. */
 export default function MainMenu() {
   const [activeMenu, setActiveMenu] = useState("Configuration Editor");
   const [configOpen, setConfigOpen] = useState(true);
