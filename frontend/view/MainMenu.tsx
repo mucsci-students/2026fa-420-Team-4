@@ -386,31 +386,6 @@ export default function MainMenu() {
           )}{" "}
         </main>{" "}
       </div>{" "}
-      {/* Log Window */}{" "}
-      <section
-        aria-label="Log window"
-        style={{
-          height: 100,
-          flexShrink: 0,
-          boxSizing: "border-box",
-          padding: "12px 16px",
-          overflow: "auto",
-          background: "#0f172a",
-          color: "#cbd5e1",
-          borderTop: "1px solid #475569",
-          fontFamily: "monospace",
-          fontSize: 12,
-        }}
-      >
-        {" "}
-        <strong style={{ color: "#f8fafc", display: "block", marginBottom: 4 }}>
-          {" "}
-          Log{" "}
-        </strong>{" "}
-        {mockMessages.map((message) => (
-          <div key={message}>{message}</div>
-        ))}{" "}
-      </section>{" "}
     </div>
   );
 }
