@@ -104,4 +104,20 @@ http://localhost:3000
 ├── uv.lock                    # Locked dependency versions
 └── README.md
 ```
+## Exporting generated schedules
+
+Pass the generated schedule objects to `export_schedules`. A save dialog lets
+you choose a destination; the `.json` or `.csv` extension determines the format.
+For example, when `scheduler` is an initialized scheduler instance:
+
+```python
+from Schedule_exporter import export_schedules
+
+schedules = list(scheduler.get_models())
+export_schedules(schedules)
+```
+
+JSON preserves the generated schedules as an array. CSV writes one row per
+schedule entry and includes schedule and entry numbers.
+
 
