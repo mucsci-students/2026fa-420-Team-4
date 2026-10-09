@@ -60,13 +60,15 @@ export default function MainMenu() {
   const buttonStyle = (active: boolean) => ({
     width: "100%",
     padding: "10px 12px",
-    border: 0,
-    borderRadius: 6,
-    background: active ? "#334155" : "transparent",
-    color: "#f8fafc",
+    border: "2px solid",
+    borderColor: active ? "#fff #808080 #808080 #fff" : "#c0c0c0 #808080 #808080 #c0c0c0",
+    background: active ? "#c0c0c0" : "#d4d0c8",
+    color: "#000",
     textAlign: "left" as const,
     fontSize: 14,
+    fontFamily: '"MS Sans Serif", "Segoe UI", sans-serif',
     cursor: "pointer",
+    boxShadow: active ? "inset 1px 1px #fff, inset -1px -1px #808080" : "none",
   });
   const toggleOptimizerFlag = (flag: string) => {
     setOptimizerFlags((current) =>
@@ -102,9 +104,10 @@ export default function MainMenu() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        background: "#f1f5f9",
-        color: "#0f172a",
-        fontFamily: "Arial, sans-serif",
+        background: "#c0c0c0",
+        color: "#000",
+        fontFamily: '"MS Sans Serif", "Segoe UI", sans-serif',
+        letterSpacing: 0,
       }}
     >
       {" "}
@@ -118,9 +121,11 @@ export default function MainMenu() {
             flexShrink: 0,
             padding: 12,
             boxSizing: "border-box",
-            background: "#1e293b",
-            color: "#f8fafc",
+            background: "#c0c0c0",
+            color: "#000",
             overflowY: "auto",
+            borderRight: "2px solid #fff",
+            boxShadow: "inset -2px 0 0 #808080",
           }}
         >
 
@@ -147,7 +152,8 @@ export default function MainMenu() {
               style={{
                 margin: "2px 0 4px 18px",
                 paddingLeft: 10,
-                borderLeft: "1px solid #475569",
+                borderLeft: "2px solid #808080",
+                boxShadow: "inset 1px 0 0 #fff",
               }}
             >
               {" "}
@@ -217,11 +223,12 @@ export default function MainMenu() {
                 height: "100%",
                 minHeight: 0,
                 overflow: "hidden",
-                background: "white",
-                border: "1px solid #cbd5e1",
-                borderRadius: 8,
+                background: "#d4d0c8",
+                border: "2px solid",
+                borderColor: "#fff #808080 #808080 #fff",
                 padding: 16,
                 boxSizing: "border-box",
+                boxShadow: "inset 1px 1px #fff, inset -1px -1px #808080",
               }}
             >
               <App />{" "}
@@ -236,11 +243,12 @@ export default function MainMenu() {
                 height: "100%",
                 minHeight: 0,
                 overflow: "auto",
-                background: "white",
-                border: "1px solid #cbd5e1",
-                borderRadius: 8,
+                background: "#d4d0c8",
+                border: "2px solid",
+                borderColor: "#fff #808080 #808080 #fff",
                 padding: 24,
                 boxSizing: "border-box",
+                boxShadow: "inset 1px 1px #fff, inset -1px -1px #808080",
               }}
             >
               {" "}
