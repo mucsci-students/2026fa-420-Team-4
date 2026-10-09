@@ -10,6 +10,25 @@ const configMenus = [
   "Class Patterns",
   "Meetings",
 ];
+// Each configuration submenu gets its own table schema and matching input fields.
+const configTableColumns: Record<string, string[]> = {
+  Rooms: ["Name", "Capacity", "Features", "Availability"],
+  Labs: ["Name", "Capacity", "Features", "Availability"],
+  Courses: [
+    "ID",
+    "Credits",
+    "Capacity",
+    "Resources",
+    "Conflicts",
+    "Faculty",
+    "Modality",
+    "Requirements",
+  ],
+  Faculty: ["Workload limits", "Availability", "Mandatory days", "Preferences"],
+  Timeslots: ["MON", "TUE", "WED", "THU", "FRI"],
+  "Class Patterns": ["Credits", "Enabled State", "Start Times", "Meetings"],
+  Meetings: ["Day", "Duration", "Lab Designation", "Delivery Mode", "Optional Start Time"],
+};
 const optimizerFlagOptions = [
   { value: "faculty_course", label: "Faculty → Course Preference" },
   { value: "faculty_room", label: "Faculty → Room Preference" },
@@ -25,10 +44,15 @@ export default function MainMenu() {
   const [configOpen, setConfigOpen] = useState(true);
   const [generationLimit, setGenerationLimit] = useState(10);
   const [optimizerFlags, setOptimizerFlags] = useState<string[]>([]);
-  const [configFile, setConfigFile] = useState<File | null>(null);
-  const [configLoading, setConfigLoading] = useState(false);
-  const [configStatus, setConfigStatus] = useState("");
-  const [configErrors, setConfigErrors] = useState<string[]>([]);
+  const [openRowMenu, setOpenRowMenu] = useState<number | null>(null);
+  const [addWindowOpen, setAddWindowOpen] = useState(false);
+  const [newRow, setNewRow] = useState<Record<string, string>>({});
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
+  const [editedRow, setEditedRow] = useState<Record<string, string>>({});
+  // Keep rows separated by submenu so switching tables does not lose entered data.
+  const [configRows, setConfigRows] = useState<
+    Record<string, Array<Record<string, string>>>
+  >({});
   const buttonStyle = (active: boolean) => ({
     width: "100%",
     padding: "10px 12px",
@@ -132,7 +156,14 @@ export default function MainMenu() {
                     padding: "8px 10px",
                     fontSize: 13,
                   }}
-                  onClick={() => setActiveMenu(menu)}
+                  onClick={() => {
+                    setActiveMenu(menu);
+                    setEditingRowIndex(null);
+                    setEditedRow({});
+                    setAddWindowOpen(false);
+                    setNewRow({});
+                    setOpenRowMenu(null);
+                  }}
                 >
                   {" "}
                   {menu}{" "}
@@ -177,8 +208,11 @@ export default function MainMenu() {
           {activeMenu === "Configuration Editor" && (
             <div
               style={{
+                display: "flex",
+                flexDirection: "column",
                 height: "100%",
-                overflow: "auto",
+                minHeight: 0,
+                overflow: "hidden",
                 background: "white",
                 border: "1px solid #cbd5e1",
                 borderRadius: 8,
@@ -194,7 +228,10 @@ export default function MainMenu() {
           {configMenus.includes(activeMenu) && (
             <section
               style={{
+                display: "flex",
+                flexDirection: "column",
                 height: "100%",
+                minHeight: 0,
                 overflow: "auto",
                 background: "white",
                 border: "1px solid #cbd5e1",
@@ -204,14 +241,364 @@ export default function MainMenu() {
               }}
             >
               {" "}
-              <h1 style={{ marginTop: 0, fontSize: 28 }}>
-                {" "}
-                {activeMenu}{" "}
-              </h1>{" "}
+              <h1 style={{ marginTop: 0, fontSize: 28 }}>{activeMenu}</h1>{" "}
               <p style={{ color: "#64748b" }}>
                 {" "}
-                Manage {activeMenu.toLowerCase()} here.{" "}
               </p>{" "}
+              {/* Render read-only rows from the selected submenu schema. */}
+              <div style={{ flex: 1, minHeight: 0, overflow: "auto", width: "100%" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    minWidth: 900,
+                    tableLayout: "fixed",
+                    borderCollapse: "collapse",
+                    textAlign: "left",
+                  }}
+                >
+                  <colgroup>
+                    {configTableColumns[activeMenu].map((column) => (
+                      <col
+                        key={column}
+                        style={{ width: Math.max(160, column.length * 12 + 40) }}
+                      />
+                    ))}
+                    <col style={{ width: 80 }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      {configTableColumns[activeMenu].map((column) => (
+                        <th
+                          key={column}
+                          scope="col"
+                          style={{
+                            padding: 10,
+                            borderBottom: "2px solid #cbd5e1",
+                            borderRight: "1px solid #e2e8f0",
+                            background: "#f8fafc",
+                            textAlign: "center",
+                          }}
+                        >
+                          {column}
+                        </th>
+                      ))}
+                      <th
+                        scope="col"
+                        style={{
+                          padding: 10,
+                          borderBottom: "2px solid #cbd5e1",
+                          borderLeft: "1px solid #e2e8f0",
+                          background: "#f8fafc",
+                          textAlign: "center",
+                        }}
+                      >
+
+                      </th>
+
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(configRows[activeMenu] ?? []).map((row, rowIndex) => (
+                      <tr key={`${activeMenu}-${rowIndex}`} style={{ height: 48 }}>
+                        {configTableColumns[activeMenu].map((column) => (
+                          <td
+                            key={column}
+                            style={{
+                              height: 48,
+                              padding: 8,
+                              borderBottom: "1px solid #e2e8f0",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              textAlign: "center",
+                            }}
+                          >
+                            {row[column] ?? ""}
+                          </td>
+                        ))}
+                        <td
+                          style={{
+                            position: "relative",
+                            height: 48,
+                            padding: 8,
+                            borderBottom: "1px solid #e2e8f0",
+                            textAlign: "center",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            aria-haspopup="menu"
+                            aria-expanded={openRowMenu === rowIndex}
+                            onClick={() =>
+                              setOpenRowMenu((current) =>
+                                current === rowIndex ? null : rowIndex
+                              )
+                            }
+                            style={{
+                              padding: "7px 12px",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 4,
+                              background: "white",
+                              cursor: "pointer",
+                            }}
+                          >
+                            ... ▾
+                          </button>
+                          {openRowMenu === rowIndex && (
+                            <div
+                              role="menu"
+                              style={{
+                                position: "absolute",
+                                zIndex: 1,
+                                top: "100%",
+                                right: 8,
+                                minWidth: 120,
+                                padding: 4,
+                                background: "white",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: 4,
+                                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.12)",
+                              }}
+                            >
+                              {(["Modify", "Remove"] as const).map(
+                                (action) => (
+                                  <button
+                                    key={action}
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => {
+                                      if (action === "Modify") {
+                                        setEditedRow({ ...row });
+                                        setEditingRowIndex(rowIndex);
+                                      } else {
+                                        setConfigRows((current) => ({
+                                          ...current,
+                                          [activeMenu]: (current[activeMenu] ?? []).filter(
+                                            (_, index) => index !== rowIndex
+                                          ),
+                                        }));
+                                        setEditingRowIndex(null);
+                                        setEditedRow({});
+                                      }
+                                      setOpenRowMenu(null);
+                                    }}
+                                    style={{
+                                      display: "block",
+                                      width: "100%",
+                                      padding: "8px 10px",
+                                      border: 0,
+                                      background: "white",
+                                      textAlign: "left",
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    {action}
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {editingRowIndex === null && !addWindowOpen && (
+                <div
+                  style={{
+                    position: "fixed",
+                    right: 24,
+                    bottom: 24,
+                    zIndex: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "10px 12px",
+                    background: "#d7d7d7",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 8,
+                    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
+                  }}
+                >
+                  <span style={{ color: "#475569", fontSize: 13 }}>
+                    Add to {activeMenu}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewRow(Object.fromEntries(configTableColumns[activeMenu].map((column) => [column, ""])));
+                      setAddWindowOpen(true);
+                    }}
+                    style={{
+                      padding: "6px 10px",
+                      border: 0,
+                      borderRadius: 6,
+                      background: "#334155",
+                      color: "#f8fafc",
+                      fontSize: 13,
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                    }}
+                  >
+                    + Add
+                  </button>
+                </div>
+              )}
+              {editingRowIndex !== null && (
+                <div
+                  role="region"
+                  aria-label={`Edit ${activeMenu} row`}
+                  style={{
+                    position: "fixed",
+                    left: 226,
+                    right: 16,
+                    bottom: 16,
+                    zIndex: 20,
+                    display: "flex",
+                    alignItems: "flex-end",
+                    gap: 12,
+                    padding: 16,
+                    background: "white",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 8,
+                    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
+                    overflowX: "auto",
+                  }}
+                >
+                  {configTableColumns[activeMenu].map((column) => (
+                    <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
+                      {column}
+                      <input
+                        value={editedRow[column] ?? ""}
+                        onChange={(event) => setEditedRow((current) => ({ ...current, [column]: event.target.value }))}
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          marginTop: 4,
+                          padding: 8,
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </label>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingRowIndex(null);
+                      setEditedRow({});
+                    }}
+                    style={{ padding: "8px 12px", flexShrink: 0 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const errors = validateRow(activeMenu, editedRow);
+                      if (Object.keys(errors).length > 0) {
+                        window.alert(Object.values(errors).join("\n"));
+                        return;
+                      }
+                      setConfigRows((current) => ({
+                        ...current,
+                        [activeMenu]: (current[activeMenu] ?? []).map((row, index) =>
+                          index === editingRowIndex ? editedRow : row
+                        ),
+                      }));
+                      setEditingRowIndex(null);
+                      setEditedRow({});
+                    }}
+                    style={{ padding: "8px 12px", background: "#334155", color: "white", border: 0, borderRadius: 6, flexShrink: 0 }}
+                  >
+                    Save
+                  </button>
+                </div>
+              )}
+              {addWindowOpen && (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const errors = validateRow(activeMenu, newRow);
+                    if (Object.keys(errors).length > 0) {
+                      window.alert(Object.values(errors).join("\n"));
+                      return;
+                    }
+                    setConfigRows((current) => ({
+                      ...current,
+                      [activeMenu]: [...(current[activeMenu] ?? []), newRow],
+                    }));
+                    setAddWindowOpen(false);
+                    setNewRow({});
+                  }}
+                  style={{
+                    position: "fixed",
+                    left: 226,
+                    right: 16,
+                    bottom: 16,
+                    zIndex: 20,
+                    display: "flex",
+                    alignItems: "flex-end",
+                    gap: 12,
+                    padding: 16,
+                    background: "#d7d7d7",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 8,
+                    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
+                    overflowX: "auto",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+                    <span style={{ fontWeight: "bold", color: "#0f172a" }}>Add {activeMenu}</span>
+                  </div>
+                  {configTableColumns[activeMenu].map((column) => (
+                    <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
+                      {column}
+                      <input
+                        autoFocus={column === configTableColumns[activeMenu][0]}
+                        value={newRow[column] ?? ""}
+                        onChange={(event) =>
+                          setNewRow((current) => ({ ...current, [column]: event.target.value }))
+                        }
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          marginTop: 4,
+                          padding: 8,
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </label>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddWindowOpen(false);
+                      setNewRow({});
+                    }}
+                    style={{ padding: "8px 12px", flexShrink: 0 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    style={{
+                      padding: "8px 12px",
+                      background: "#334155",
+                      color: "white",
+                      border: 0,
+                      borderRadius: 6,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Add
+                  </button>
+                </form>
+              )}
             </section>
           )}{" "}
           {/* Schedule Generator */}{" "}
@@ -422,4 +809,35 @@ export default function MainMenu() {
       </div>{" "}
     </div>
   );
+}
+
+type ConfigRow = Record<string, string>;
+type RowErrors = Record<string, string>;
+
+type ColumnValidator = (value: string, row: ConfigRow) => string | undefined;
+
+const validators: Record<string, Record<string, ColumnValidator>> = {
+  Rooms: {
+    Name: (value) => value.trim() ? undefined : "Name is required",
+    Capacity: (value) =>
+      /^\d+$/.test(value) && Number(value) > 0
+        ? undefined
+        : "Capacity must be a positive whole number",
+    Features: () => undefined,      // Replace with the rule you want
+    Availability: () => undefined,  // Replace with the rule you want
+  },
+  // Add an entry for every column in Labs, Courses, Faculty, etc.
+};
+
+function validateRow(menu: string, row: ConfigRow): RowErrors {
+  const errors: RowErrors = {};
+
+  for (const column of configTableColumns[menu]) {
+    const validate = validators[menu]?.[column];
+    const error = validate?.(row[column] ?? "", row);
+
+    if (error) errors[column] = error;
+  }
+
+  return errors;
 }
