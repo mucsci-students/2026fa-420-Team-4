@@ -40,7 +40,19 @@ export function App() {
       <h1>Configuration Editor</h1>
 
       <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-        <h2>Load Config</h2>
+        <h2>Create New Config or Load Existing</h2>
+        <div style={{ marginBottom: '10px' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setFile(null);
+              setStatus('New blank configuration started.');
+              setErrors([]);
+            }}
+          >
+            Create New Config
+          </button>
+        </div>
         <input type="file" accept=".json" onChange={handleFileChange} />
         <button onClick={handleUpload} disabled={!file || loading} style={{ marginLeft: '10px' }}>
           {loading ? 'Loading...' : 'Load Config'}

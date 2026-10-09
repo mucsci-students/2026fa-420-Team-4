@@ -53,6 +53,10 @@ export default function MainMenu() {
   const [configRows, setConfigRows] = useState<
     Record<string, Array<Record<string, string>>>
   >({});
+  const [configFile, setConfigFile] = useState<File | null>(null);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configStatus, setConfigStatus] = useState("");
+  const [configErrors, setConfigErrors] = useState<string[]>([]);
   const buttonStyle = (active: boolean) => ({
     width: "100%",
     padding: "10px 12px",
@@ -220,7 +224,6 @@ export default function MainMenu() {
                 boxSizing: "border-box",
               }}
             >
-              {" "}
               <App />{" "}
             </div>
           )}{" "}
@@ -780,6 +783,25 @@ export default function MainMenu() {
                 {" "}
                 Generate Schedule{" "}
               </button>{" "}
+              {/* Generation Status */}{" "}
+              <div
+                style={{
+                  marginTop: 24,
+                  padding: 20,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 8,
+                }}
+              >
+                {" "}
+                <h2 style={{ marginTop: 0, marginBottom: 8, fontSize: 18 }}>
+                  {" "}
+                  Generation Status{" "}
+                </h2>{" "}
+                <p style={{ margin: 0, color: "#64748b" }}>
+                  {" "}
+                  Ready to generate a schedule.{" "}
+                </p>{" "}
+              </div>{" "}
             </section>
           )}{" "}
           {/* Schedule Viewer */}{" "}
