@@ -346,7 +346,7 @@ export default function MainMenu() {
                                     key={action}
                                     type="button"
                                     role="menuitem"
-                                    onClick={(event) => {
+                                    onClick={() => {
                                       if (action === "Modify") {
                                         setEditedRow({ ...row });
                                         setEditingRowIndex(rowIndex);
@@ -357,6 +357,8 @@ export default function MainMenu() {
                                             (_, index) => index !== rowIndex
                                           ),
                                         }));
+                                        setEditingRowIndex(null);
+                                        setEditedRow({});
                                       }
                                       setOpenRowMenu(null);
                                     }}
@@ -475,6 +477,11 @@ export default function MainMenu() {
                   <button
                     type="button"
                     onClick={() => {
+                      const errors = validateRow(activeMenu, editedRow);
+                      if (Object.keys(errors).length > 0) {
+                        window.alert(Object.values(errors).join("\n"));
+                        return;
+                      }
                       setConfigRows((current) => ({
                         ...current,
                         [activeMenu]: (current[activeMenu] ?? []).map((row, index) =>
@@ -494,6 +501,11 @@ export default function MainMenu() {
                 <form
                   onSubmit={(event) => {
                     event.preventDefault();
+                    const errors = validateRow(activeMenu, newRow);
+                    if (Object.keys(errors).length > 0) {
+                      window.alert(Object.values(errors).join("\n"));
+                      return;
+                    }
                     setConfigRows((current) => ({
                       ...current,
                       [activeMenu]: [...(current[activeMenu] ?? []), newRow],
