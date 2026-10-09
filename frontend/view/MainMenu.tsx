@@ -1,5 +1,6 @@
 import { useState } from "react";
 import App from "./App";
+import { uploadConfig } from "./api";
 const configMenus = [
   "Rooms",
   "Labs",
@@ -24,6 +25,10 @@ export default function MainMenu() {
   const [configOpen, setConfigOpen] = useState(true);
   const [generationLimit, setGenerationLimit] = useState(10);
   const [optimizerFlags, setOptimizerFlags] = useState<string[]>([]);
+  const [configFile, setConfigFile] = useState<File | null>(null);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configStatus, setConfigStatus] = useState("");
+  const [configErrors, setConfigErrors] = useState<string[]>([]);
   const buttonStyle = (active: boolean) => ({
     width: "100%",
     padding: "10px 12px",
@@ -41,6 +46,25 @@ export default function MainMenu() {
         ? current.filter((currentFlag) => currentFlag !== flag)
         : [...current, flag]
     );
+  };
+  const handleConfigLoad = async () => {
+    if (!configFile) return;
+
+    setConfigLoading(true);
+    setConfigErrors([]);
+    setConfigStatus("Loading configuration...");
+    try {
+      const response = await uploadConfig(configFile);
+      setConfigStatus(response.message || "Config loaded successfully!");
+    } catch (error: any) {
+      setConfigStatus("Config load failed.");
+      setConfigErrors(
+        error.response?.data?.detail?.errors ??
+          [error.response?.data?.detail || error.message]
+      );
+    } finally {
+      setConfigLoading(false);
+    }
   };
   return (
     <div
@@ -207,6 +231,45 @@ export default function MainMenu() {
                 {" "}
                 Schedule Generator{" "}
               </h1>{" "}
+              <div
+                style={{
+                  marginBottom: 20,
+                  padding: 16,
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 8,
+                  background: "#f8fafc",
+                }}
+              >
+                <h2 style={{ marginTop: 0, marginBottom: 12, fontSize: 18 }}>
+                  Load Config
+                </h2>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={(event) =>
+                    setConfigFile(event.target.files?.[0] ?? null)
+                  }
+                />{" "}
+                <button
+                  type="button"
+                  onClick={handleConfigLoad}
+                  disabled={!configFile || configLoading}
+                >
+                  {configLoading ? "Loading..." : "Load Config"}
+                </button>
+                {configStatus && (
+                  <p role="status" style={{ marginTop: 8 }}>
+                    {configStatus}
+                  </p>
+                )}
+                {configErrors.length > 0 && (
+                  <ul role="alert" style={{ color: "#b91c1c" }}>
+                    {configErrors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>{" "}
               <p style={{ color: "#64748b", marginBottom: 24 }}>
                 {" "}
                 Generate schedules using the current configuration.{" "}

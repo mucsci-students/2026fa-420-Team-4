@@ -1,6 +1,6 @@
 // frontend/view/App.tsx
 import React, { useState } from 'react';
-import { uploadConfig, runGenerator } from './api';
+import { runGenerator, uploadConfig } from './api';
 import type { GeneratedSchedule } from './api';
 
 export function App() {
@@ -20,6 +20,7 @@ export function App() {
     if (!file) return;
     setLoading(true);
     setErrors([]);
+    setSchedules([]);
     setStatus('Uploading configuration...');
 
     try {
@@ -39,7 +40,9 @@ export function App() {
 
   const handleGenerate = async () => {
     setLoading(true);
+    setErrors([]);
     setStatus('Generating schedules...');
+
     try {
       const res = await runGenerator();
       setSchedules(res.schedules || []);
@@ -54,26 +57,16 @@ export function App() {
 
   return (
     <div style={{ maxWidth: '800px', margin: '40px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
-      <h1>Scheduler Control Dashboard</h1>
+      <h1>Configuration Editor</h1>
 
-      {/* Upload Section */}
       <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-        <h2>1. Upload Configuration JSON</h2>
+        <h2>Load Config</h2>
         <input type="file" accept=".json" onChange={handleFileChange} />
         <button onClick={handleUpload} disabled={!file || loading} style={{ marginLeft: '10px' }}>
-          Upload Config
+          {loading ? 'Loading...' : 'Load Config'}
         </button>
       </div>
 
-      {/* Generator Section */}
-      <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-        <h2>2. Run Scheduler Engine</h2>
-        <button onClick={handleGenerate} disabled={loading}>
-          {loading ? 'Processing...' : 'Generate Schedules'}
-        </button>
-      </div>
-
-      {/* Status & Diagnostics */}
       {status && <p><strong>Status:</strong> {status}</p>}
       {errors.length > 0 && (
         <div style={{ background: '#ffe6e6', color: '#900', padding: '10px', borderRadius: '4px' }}>
@@ -85,23 +78,28 @@ export function App() {
           </ul>
         </div>
       )}
-
-      {/* Results Rendering */}
       {schedules.length > 0 && (
         <div>
           <h2>Generated Output ({schedules.length})</h2>
-          {schedules.map((sched) => (
-            <div key={sched.schedule_id} style={{ border: '1px solid #eee', margin: '10px 0', padding: '10px' }}>
-              <h3>Schedule #{sched.schedule_id}</h3>
+          {schedules.map((schedule) => (
+            <div key={schedule.schedule_id} style={{ border: '1px solid #eee', margin: '10px 0', padding: '10px' }}>
+              <h3>Schedule #{schedule.schedule_id}</h3>
               <ul>
-                {sched.courses.map((courseCsv, idx) => (
-                  <li key={idx}><code>{courseCsv}</code></li>
+                {schedule.courses.map((course, index) => (
+                  <li key={index}><code>{course}</code></li>
                 ))}
               </ul>
             </div>
           ))}
         </div>
       )}
+      <button
+        onClick={handleGenerate}
+        disabled={loading}
+        style={{ marginTop: '24px', padding: '10px 16px' }}
+      >
+        {loading ? 'Processing...' : 'Generate Schedule'}
+      </button>
     </div>
   );
 }
