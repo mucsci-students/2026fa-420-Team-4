@@ -60,7 +60,7 @@ export default function MainMenu() {
       setConfigStatus("Config load failed.");
       setConfigErrors(
         error.response?.data?.detail?.errors ??
-          [error.response?.data?.detail || error.message]
+        [error.response?.data?.detail || error.message]
       );
     } finally {
       setConfigLoading(false);
@@ -95,7 +95,7 @@ export default function MainMenu() {
             overflowY: "auto",
           }}
         >
-          
+
           {/* Configuration Editor */}{" "}
           <button
             type="button"
@@ -241,7 +241,7 @@ export default function MainMenu() {
                 }}
               >
                 <h2 style={{ marginTop: 0, marginBottom: 12, fontSize: 18 }}>
-                  Load Config
+                  Load Config to Generate Schedules
                 </h2>
                 <input
                   type="file"
@@ -270,10 +270,6 @@ export default function MainMenu() {
                   </ul>
                 )}
               </div>{" "}
-              <p style={{ color: "#64748b", marginBottom: 24 }}>
-                {" "}
-                Generate schedules using the current configuration.{" "}
-              </p>{" "}
               {/* Generation Limit */}{" "}
               <div
                 style={{
@@ -397,25 +393,6 @@ export default function MainMenu() {
                 {" "}
                 Generate Schedule{" "}
               </button>{" "}
-              {/* Generation Status */}{" "}
-              <div
-                style={{
-                  marginTop: 24,
-                  padding: 20,
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 8,
-                }}
-              >
-                {" "}
-                <h2 style={{ marginTop: 0, marginBottom: 8, fontSize: 18 }}>
-                  {" "}
-                  Generation Status{" "}
-                </h2>{" "}
-                <p style={{ margin: 0, color: "#64748b" }}>
-                  {" "}
-                  Ready to generate a schedule.{" "}
-                </p>{" "}
-              </div>{" "}
             </section>
           )}{" "}
           {/* Schedule Viewer */}{" "}

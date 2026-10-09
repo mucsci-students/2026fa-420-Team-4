@@ -1,13 +1,11 @@
 // frontend/view/App.tsx
 import React, { useState } from 'react';
-import { runGenerator, uploadConfig } from './api';
-import type { GeneratedSchedule } from './api';
+import { uploadConfig } from './api';
 
 export function App() {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>('');
   const [errors, setErrors] = useState<string[]>([]);
-  const [schedules, setSchedules] = useState<GeneratedSchedule[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -20,7 +18,6 @@ export function App() {
     if (!file) return;
     setLoading(true);
     setErrors([]);
-    setSchedules([]);
     setStatus('Uploading configuration...');
 
     try {
@@ -33,23 +30,6 @@ export function App() {
       } else {
         setErrors([err.response?.data?.detail || err.message]);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGenerate = async () => {
-    setLoading(true);
-    setErrors([]);
-    setStatus('Generating schedules...');
-
-    try {
-      const res = await runGenerator();
-      setSchedules(res.schedules || []);
-      setStatus(`Generated ${res.count} schedule(s) successfully!`);
-    } catch (err: any) {
-      setStatus('Schedule generation failed.');
-      setErrors([err.response?.data?.detail || err.message]);
     } finally {
       setLoading(false);
     }
@@ -78,28 +58,6 @@ export function App() {
           </ul>
         </div>
       )}
-      {schedules.length > 0 && (
-        <div>
-          <h2>Generated Output ({schedules.length})</h2>
-          {schedules.map((schedule) => (
-            <div key={schedule.schedule_id} style={{ border: '1px solid #eee', margin: '10px 0', padding: '10px' }}>
-              <h3>Schedule #{schedule.schedule_id}</h3>
-              <ul>
-                {schedule.courses.map((course, index) => (
-                  <li key={index}><code>{course}</code></li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      )}
-      <button
-        onClick={handleGenerate}
-        disabled={loading}
-        style={{ marginTop: '24px', padding: '10px 16px' }}
-      >
-        {loading ? 'Processing...' : 'Generate Schedule'}
-      </button>
     </div>
   );
 }
