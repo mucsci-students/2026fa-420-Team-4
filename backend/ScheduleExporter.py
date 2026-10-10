@@ -1,6 +1,7 @@
 """Export generated schedules as JSON or CSV."""
 
 import csv
+import io
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, is_dataclass
@@ -83,6 +84,25 @@ def _csv_value(value):
     return value
 
 
+def schedules_to_csv(schedules: Sequence[object]) -> str:
+    """Serialize schedules as CSV text without opening a local file dialog."""
+    if isinstance(schedules, (str, bytes)) or not isinstance(schedules, Sequence):
+        raise TypeError("schedules must be a sequence of schedule objects")
+
+    schedule_data = [_to_serializable(schedule) for schedule in schedules]
+    rows = _csv_rows(schedule_data)
+    fieldnames = list(dict.fromkeys(key for row in rows for key in row))
+    output = io.StringIO(newline="")
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    if fieldnames:
+        writer.writeheader()
+        writer.writerows(
+            {key: _csv_value(value) for key, value in row.items()}
+            for row in rows
+        )
+    return output.getvalue()
+
+
 def export_schedules(schedules: Sequence[object]) -> Path | None:
     """Export an array of schedule objects after the user chooses a destination.
 
@@ -106,17 +126,7 @@ def export_schedules(schedules: Sequence[object]) -> Path | None:
             encoding="utf-8",
         )
     elif file_format == ".csv":
-        rows = _csv_rows(schedule_data)
-        # Use the union of all row keys so schedules with different fields fit.
-        fieldnames = list(dict.fromkeys(key for row in rows for key in row))
-        with path.open("w", newline="", encoding="utf-8") as stream:
-            writer = csv.DictWriter(stream, fieldnames=fieldnames)
-            if fieldnames:
-                writer.writeheader()
-                writer.writerows(
-                    {key: _csv_value(value) for key, value in row.items()}
-                    for row in rows
-                )
+        path.write_text(schedules_to_csv(schedule_data), encoding="utf-8", newline="")
     else:
         raise ValueError("Choose a destination ending in .json or .csv")
 

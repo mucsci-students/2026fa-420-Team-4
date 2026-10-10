@@ -1,6 +1,6 @@
 import { useState } from "react";
 import App from "./App";
-import { uploadConfig } from "./api";
+import { runGenerator, uploadConfig } from "./api";
 import {
   applyConfigTableRows,
   asObject,
@@ -12,6 +12,7 @@ import {
   createConfigFileController,
   type OpenedConfigFile,
 } from "./configFileController";
+import { exportScheduleCsvFile } from "./scheduleExportController";
 const configMenus = [
   "Rooms",
   "Labs",
@@ -607,6 +608,11 @@ export default function MainMenu() {
   const [configOpen, setConfigOpen] = useState(true);
   const [generationLimit, setGenerationLimit] = useState(10);
   const [optimizerFlags, setOptimizerFlags] = useState<string[]>([]);
+  const [generatedScheduleCount, setGeneratedScheduleCount] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState("Ready to generate a schedule.");
+  const [generationError, setGenerationError] = useState("");
+  const [generatingSchedules, setGeneratingSchedules] = useState(false);
+  const [exportingSchedule, setExportingSchedule] = useState(false);
   const [addWindowOpen, setAddWindowOpen] = useState(false);
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
@@ -643,6 +649,37 @@ export default function MainMenu() {
         : [...current, flag]
     );
   };
+  const handleGenerateSchedule = async () => {
+    setGeneratingSchedules(true);
+    setGenerationError("");
+    setGenerationStatus("Generating schedules...");
+    try {
+      const result = await runGenerator();
+      setGeneratedScheduleCount(result.count);
+      setGenerationStatus(`Generated ${result.count} schedule(s).`);
+    } catch (error) {
+      setGeneratedScheduleCount(0);
+      setGenerationStatus("Schedule generation failed.");
+      setGenerationError(
+        error instanceof Error ? error.message : "Could not generate schedules.",
+      );
+    } finally {
+      setGeneratingSchedules(false);
+    }
+  };
+  const handleExportSchedule = async () => {
+    setExportingSchedule(true);
+    setGenerationError("");
+    try {
+      await exportScheduleCsvFile();
+    } catch (error) {
+      setGenerationError(
+        error instanceof Error ? error.message : "Could not export schedules.",
+      );
+    } finally {
+      setExportingSchedule(false);
+    }
+  };
   const handleConfigLoad = async () => {
     if (!configFile) return;
 
@@ -672,12 +709,12 @@ export default function MainMenu() {
     setAddWindowOpen(false);
     setNewRow({});
   };
-  const handleChooseEditorFile = async (): Promise<OpenedConfigFile | null> => {
-    const selected = await editorFileController.open();
-    if (selected) {
-      setEditorFileName(selected.file.name);
-    }
-    return selected ? { file: selected.file, config: selected.config } : null;
+  const handleChooseEditorFile = async (
+    file: File,
+  ): Promise<OpenedConfigFile> => {
+    const selected = await editorFileController.open(file);
+    setEditorFileName(selected.file.name);
+    return selected;
   };
   const handleCreateNewConfig = () => {
     editorFileController.clear();
@@ -701,10 +738,10 @@ export default function MainMenu() {
     setEditorSaveStatus("Saving changes...");
     try {
       const updatedConfig = applyConfigTableRows(originalEditorConfig, configRows);
-      await editorFileController.save(updatedConfig);
+      editorFileController.save(updatedConfig);
       setOriginalEditorConfig(updatedConfig);
       setEditorDirty(false);
-      setEditorSaveStatus(`Saved changes to ${editorFileName}.`);
+      setEditorSaveStatus("");
     } catch (error) {
       setEditorSaveStatus(
         error instanceof Error ? error.message : "Could not save the configuration file.",
@@ -1385,12 +1422,8 @@ export default function MainMenu() {
               {/* Generate Button */}{" "}
               <button
                 type="button"
-                onClick={() => {
-                  console.log("Generation request:", {
-                    limit: generationLimit,
-                    optimizer_flags: optimizerFlags,
-                  });
-                }}
+                onClick={() => void handleGenerateSchedule()}
+                disabled={generatingSchedules}
                 style={{
                   marginTop: 24,
                   padding: "11px 20px",
@@ -1400,10 +1433,10 @@ export default function MainMenu() {
                   color: "#f8fafc",
                   fontSize: 14,
                   fontWeight: "bold",
-                  cursor: "pointer",
+                  cursor: generatingSchedules ? "not-allowed" : "pointer",
                 }}
               >
-                Generate Schedule
+                {generatingSchedules ? "Generating..." : "Generate Schedule"}
               </button>{" "}
               {/* Generation Status */}{" "}
               <div
@@ -1420,11 +1453,18 @@ export default function MainMenu() {
                   Generation Status{" "}
                 </h2>{" "}
                 <p style={{ margin: 0, color: "#64748b" }}>
-                  Ready to generate a schedule.
+                  {generationStatus}
                 </p>{" "}
+                {generationError && (
+                  <p role="alert" style={{ marginBottom: 0, color: "#b91c1c" }}>
+                    {generationError}
+                  </p>
+                )}
               </div>{" "}
               <button
                 type="button"
+                onClick={() => void handleExportSchedule()}
+                disabled={generatedScheduleCount === 0 || exportingSchedule}
                 style={{
                   marginTop: 20,
                   padding: "11px 20px",
@@ -1434,10 +1474,13 @@ export default function MainMenu() {
                   color: "#f8fafc",
                   fontSize: 14,
                   fontWeight: "bold",
-                  cursor: "pointer",
+                  cursor:
+                    generatedScheduleCount > 0 && !exportingSchedule
+                      ? "pointer"
+                      : "not-allowed",
                 }}
               >
-                Export Schedule as CSV
+                {exportingSchedule ? "Exporting..." : "Export Schedule as CSV"}
               </button>{" "}
             </section>
           )}{" "}

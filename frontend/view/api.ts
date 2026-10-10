@@ -36,3 +36,10 @@ export const runGenerator = async () => {
   const response = await api.post('/generator/run');
   return response.data;
 };
+
+export const exportScheduleCsv = async () => {
+  const response = await api.get('/schedule/export/csv', {
+    responseType: 'blob',
+  });
+  return response.data as Blob;
+};

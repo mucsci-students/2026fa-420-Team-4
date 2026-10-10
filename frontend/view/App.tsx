@@ -1,32 +1,38 @@
 // frontend/view/App.tsx
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { uploadConfig } from './api';
 import type { OpenedConfigFile } from './configFileController';
 
 interface AppProps {
   onConfigSelected: (config: unknown) => void;
-  onChooseFile: () => Promise<OpenedConfigFile | null>;
+  onChooseFile: (file: File) => Promise<OpenedConfigFile>;
   onCreateNew: () => void;
 }
 
-export function App({ onConfigSelected, onChooseFile, onCreateNew }: AppProps) {
+export function App({
+  onConfigSelected,
+  onChooseFile,
+  onCreateNew,
+}: AppProps) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>('');
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const handleChooseFile = async () => {
+  const handleChooseFile = async (selectedFile: File | undefined) => {
+    if (!selectedFile) return;
     setErrors([]);
-    setStatus('Choose a configuration file...');
+    setStatus('Loading configuration file...');
 
     try {
-      const selected = await onChooseFile();
-      if (!selected) return;
+      const selected = await onChooseFile(selectedFile);
       setFile(selected.file);
       onConfigSelected(selected.config);
-      setStatus(`Loaded ${selected.file.name} into the editor. Save Changes writes edits back to this file.`);
+      setStatus(
+        `Loaded ${selected.file.name} into the editor. Save Changes downloads the edited configuration with the same filename.`,
+      );
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
       setStatus('Could not open configuration file.');
       setErrors([
         error instanceof Error ? error.message : 'Invalid JSON file.',
@@ -74,7 +80,17 @@ export function App({ onConfigSelected, onChooseFile, onCreateNew }: AppProps) {
             Create New Config
           </button>
         </div>
-        <button type="button" onClick={() => void handleChooseFile()}>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".json,application/json"
+          onChange={(event) => {
+            void handleChooseFile(event.target.files?.[0]);
+            event.currentTarget.value = '';
+          }}
+          style={{ display: 'none' }}
+        />
+        <button type="button" onClick={() => fileInput.current?.click()}>
           Choose File
         </button>
         <button onClick={handleUpload} disabled={!file || loading} style={{ marginLeft: '10px' }}>
