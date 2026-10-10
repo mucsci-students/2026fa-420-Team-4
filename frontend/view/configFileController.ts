@@ -12,6 +12,10 @@ export function createConfigFileController() {
       fileName = file.name;
       return { file, config };
     },
+    create(): string {
+      fileName = "new-config.json";
+      return fileName;
+    },
     clear(): void {
       fileName = null;
     },

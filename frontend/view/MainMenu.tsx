@@ -745,11 +745,10 @@ export default function MainMenu() {
     return selected;
   };
   const handleCreateNewConfig = () => {
-    editorFileController.clear();
-    setEditorFileName("");
-    setOriginalEditorConfig(null);
+    setEditorFileName(editorFileController.create());
+    setOriginalEditorConfig({});
     setConfigRows({});
-    setEditorDirty(false);
+    setEditorDirty(true);
     setEditorSaveStatus("");
     setEditingRowIndex(null);
     setEditedRow({});
@@ -758,7 +757,7 @@ export default function MainMenu() {
   };
   const handleSaveEditorConfig = async () => {
     if (originalEditorConfig === null || !editorFileName) {
-      setEditorSaveStatus("Choose an existing configuration file before saving.");
+      setEditorSaveStatus("Create a new configuration or choose an existing file before saving.");
       return;
     }
 

@@ -73,7 +73,7 @@ export function App({
             onClick={() => {
               setFile(null);
               onCreateNew();
-              setStatus('New blank configuration started.');
+              setStatus('Success: New configuration created. Save Changes downloads it as new-config.json.');
               setErrors([]);
             }}
           >
@@ -98,7 +98,19 @@ export function App({
         </button>
       </div>
 
-      {status && <p><strong>Status:</strong> {status}</p>}
+      {status && (
+        <p
+          role="status"
+          style={{
+            color: status.startsWith('Success:') ? '#166534' : undefined,
+            background: status.startsWith('Success:') ? '#dcfce7' : undefined,
+            padding: status.startsWith('Success:') ? '10px' : undefined,
+            borderRadius: status.startsWith('Success:') ? '4px' : undefined,
+          }}
+        >
+          <strong>Status:</strong> {status}
+        </p>
+      )}
       {errors.length > 0 && (
         <div style={{ background: '#ffe6e6', color: '#900', padding: '10px', borderRadius: '4px' }}>
           <h4>Diagnostics / Errors:</h4>
