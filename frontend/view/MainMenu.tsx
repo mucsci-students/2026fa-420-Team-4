@@ -17,6 +17,7 @@ import {
   createGenerationSettingsController,
   DEFAULT_GENERATION_LIMIT,
 } from "./generationSettingsController";
+import { formatConfigErrors } from "./configErrorMessages";
 import { exportScheduleCsvFile } from "./scheduleExportController";
 const configMenus = [
   "Rooms",
@@ -683,15 +684,15 @@ export default function MainMenu() {
         }>(error)
       ) {
         const detail = error.response?.data?.detail;
-        setConfigErrors(
+        setConfigErrors(formatConfigErrors(
           typeof detail === "string"
             ? [detail]
             : detail?.errors ?? [error.message],
-        );
+        ));
       } else {
-        setConfigErrors([
+        setConfigErrors(formatConfigErrors([
           error instanceof Error ? error.message : "Invalid JSON configuration.",
-        ]);
+        ]));
       }
     } finally {
       setConfigLoading(false);
@@ -785,10 +786,11 @@ export default function MainMenu() {
       setEditorSaveStatus("Configuration validated and saved successfully.");
       setEditorSaveFailed(false);
     } catch (error) {
-      let message =
+      let messages = [
         error instanceof Error
           ? error.message
-          : "Could not validate and save the configuration file.";
+          : "Could not validate and save the configuration file.",
+      ];
       if (
         axios.isAxiosError<{
           detail?: { errors?: string[] } | string;
@@ -796,12 +798,12 @@ export default function MainMenu() {
       ) {
         const detail = error.response?.data?.detail;
         if (typeof detail === "string") {
-          message = detail;
-        } else if (detail?.errors) {
-          message = detail.errors.join(" ");
+          messages = [detail];
+        } else if (detail?.errors?.length) {
+          messages = detail.errors;
         }
       }
-      setEditorSaveStatus(message);
+      setEditorSaveStatus(formatConfigErrors(messages).join("\n"));
       setEditorSaveFailed(true);
     } finally {
       setEditorSaving(false);
@@ -1193,7 +1195,7 @@ export default function MainMenu() {
                     }}
                     style={{ padding: "8px 12px", background: "#334155", color: "white", border: 0, borderRadius: 6, flexShrink: 0 }}
                   >
-                    Apply to Draft
+                    Apply
                   </button>
                 </div>
               )}
@@ -1202,15 +1204,13 @@ export default function MainMenu() {
                   onSubmit={(event) => {
                     event.preventDefault();
                     const rows = configRows[activeMenu] ?? [];
-                    const newRowIndex = rows.length;
                     setConfigRows((current) => ({
                       ...current,
                       [activeMenu]: [...rows, newRow],
                     }));
                     setEditorDirty(true);
                     setAddWindowOpen(false);
-                    setEditingRowIndex(newRowIndex);
-                    setEditedRow({ ...newRow });
+                    setNewRow({});
                   }}
                   style={{
                     display: "flex",
@@ -1295,6 +1295,7 @@ export default function MainMenu() {
                         margin: "4px 0 0",
                         color: editorSaveFailed ? "#b91c1c" : "#475569",
                         fontSize: 13,
+                        whiteSpace: "pre-line",
                       }}
                     >
                       {editorSaveStatus}
@@ -1380,11 +1381,14 @@ export default function MainMenu() {
                   </p>
                 )}
                 {configErrors.length > 0 && (
-                  <ul role="alert" style={{ color: "#b91c1c" }}>
+                  <div role="alert" style={{ marginTop: 10, padding: "10px 14px", color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6 }}>
+                    <strong>Please fix these configuration issues:</strong>
+                    <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
                     {configErrors.map((error, index) => (
                       <li key={index}>{error}</li>
                     ))}
-                  </ul>
+                    </ul>
+                  </div>
                 )}
               </div>{" "}
               {/* Generation Limit */}{" "}

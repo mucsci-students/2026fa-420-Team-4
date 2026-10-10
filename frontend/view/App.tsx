@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react';
 import axios from 'axios';
 import type { OpenedConfigFile } from './configFileController';
+import { formatConfigErrors } from './configErrorMessages';
 
 interface AppProps {
   onConfigSelected: (config: unknown) => void;
@@ -37,15 +38,15 @@ export function App({
         }>(error)
       ) {
         const detail = error.response?.data?.detail;
-        setErrors(
+        setErrors(formatConfigErrors(
           typeof detail === 'string'
             ? [detail]
             : detail?.errors ?? [error.message],
-        );
+        ));
       } else {
-        setErrors([
+        setErrors(formatConfigErrors([
           error instanceof Error ? error.message : 'Invalid JSON file.',
-        ]);
+        ]));
       }
     }
   };
@@ -97,9 +98,9 @@ export function App({
         </p>
       )}
       {errors.length > 0 && (
-        <div style={{ background: '#ffe6e6', color: '#900', padding: '10px', borderRadius: '4px' }}>
-          <h4>Diagnostics / Errors:</h4>
-          <ul>
+        <div role="alert" style={{ background: '#fef2f2', color: '#991b1b', padding: '12px 16px', border: '1px solid #fecaca', borderRadius: '6px' }}>
+          <h4 style={{ margin: '0 0 8px' }}>Please fix these configuration issues:</h4>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
             {errors.map((err, idx) => (
               <li key={idx}>{err}</li>
             ))}
