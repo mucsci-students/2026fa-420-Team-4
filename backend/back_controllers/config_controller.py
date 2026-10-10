@@ -1,4 +1,4 @@
-# backend/controllers/config_controller.py
+# backend/back_controllers/config_controller.py
 from fastapi import APIRouter
 from backend.models.session_store import store
 

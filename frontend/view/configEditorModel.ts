@@ -1,6 +1,15 @@
 export type ConfigTableRow = Record<string, string>;
 export type ConfigTables = Record<string, ConfigTableRow[]>;
 
+export const configMenus = [
+  "Rooms",
+  "Labs",
+  "Courses",
+  "Faculty",
+  "Timeslots",
+  "Class Patterns",
+];
+
 export const configTableColumns: Record<string, string[]> = {
   Rooms: ["Name", "Capacity", "Features", "Times"],
   Labs: ["Name", "Capacity", "Features", "Times"],

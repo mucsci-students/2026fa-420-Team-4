@@ -1,7 +1,7 @@
 // frontend/view/App.tsx
 import { useRef, useState } from 'react';
 import axios from 'axios';
-import type { OpenedConfigFile } from './configFileController';
+import type { OpenedConfigFile } from './front_controllers/configFileController';
 import { formatConfigErrors } from './configErrorMessages';
 
 interface AppProps {

@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-from backend.controllers.schedule_export_controller import export_schedule_csv
+from backend.back_controllers.schedule_export_controller import export_schedule_csv
 from backend.models.session_store import store
 
 

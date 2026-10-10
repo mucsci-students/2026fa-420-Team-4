@@ -1,4 +1,4 @@
-import { exportScheduleCsv } from "./api";
+import { exportScheduleCsv } from "../api";
 
 export async function exportScheduleCsvFile(): Promise<void> {
   const csv = await exportScheduleCsv();

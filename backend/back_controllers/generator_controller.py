@@ -1,4 +1,4 @@
-# backend/controllers/generator_controller.py
+# backend/back_controllers/generator_controller.py
 from fastapi import APIRouter, HTTPException
 from backend.models.session_store import store
 from scheduler import Scheduler

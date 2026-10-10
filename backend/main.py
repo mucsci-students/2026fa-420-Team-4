@@ -1,7 +1,7 @@
 # backend/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.controllers import (
+from backend.back_controllers import (
     config_controller,
     file_controller,
     generator_controller,
