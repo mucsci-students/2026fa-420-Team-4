@@ -1,31 +1,33 @@
 // frontend/view/App.tsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { uploadConfig } from './api';
+import type { OpenedConfigFile } from './configFileController';
 
 interface AppProps {
   onConfigSelected: (config: unknown) => void;
+  onChooseFile: () => Promise<OpenedConfigFile | null>;
+  onCreateNew: () => void;
 }
 
-export function App({ onConfigSelected }: AppProps) {
+export function App({ onConfigSelected, onChooseFile, onCreateNew }: AppProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>('');
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
-    setFile(selectedFile);
+  const handleChooseFile = async () => {
     setErrors([]);
-    setStatus('Reading configuration...');
+    setStatus('Choose a configuration file...');
 
     try {
-      const config: unknown = JSON.parse(await selectedFile.text());
-      onConfigSelected(config);
-      setStatus(`Loaded ${selectedFile.name} into the editor.`);
+      const selected = await onChooseFile();
+      if (!selected) return;
+      setFile(selected.file);
+      onConfigSelected(selected.config);
+      setStatus(`Loaded ${selected.file.name} into the editor. Save Changes writes edits back to this file.`);
     } catch (error) {
-      setStatus('Could not read configuration file.');
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setStatus('Could not open configuration file.');
       setErrors([
         error instanceof Error ? error.message : 'Invalid JSON file.',
       ]);
@@ -64,6 +66,7 @@ export function App({ onConfigSelected }: AppProps) {
             type="button"
             onClick={() => {
               setFile(null);
+              onCreateNew();
               setStatus('New blank configuration started.');
               setErrors([]);
             }}
@@ -71,7 +74,9 @@ export function App({ onConfigSelected }: AppProps) {
             Create New Config
           </button>
         </div>
-        <input type="file" accept=".json,application/json" onChange={handleFileChange} />
+        <button type="button" onClick={() => void handleChooseFile()}>
+          Choose File
+        </button>
         <button onClick={handleUpload} disabled={!file || loading} style={{ marginLeft: '10px' }}>
           {loading ? 'Loading...' : 'Load Config'}
         </button>

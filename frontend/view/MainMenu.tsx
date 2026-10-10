@@ -1,6 +1,17 @@
 import { useState } from "react";
 import App from "./App";
 import { uploadConfig } from "./api";
+import {
+  applyConfigTableRows,
+  asObject,
+  configTableColumns,
+  getConfigTableRows,
+  type ConfigTableRow,
+} from "./configEditorModel";
+import {
+  createConfigFileController,
+  type OpenedConfigFile,
+} from "./configFileController";
 const configMenus = [
   "Rooms",
   "Labs",
@@ -8,96 +19,577 @@ const configMenus = [
   "Faculty",
   "Timeslots",
   "Class Patterns",
-  "Meetings",
 ];
-// Each configuration submenu gets its own table schema and matching input fields.
-const configTableColumns: Record<string, string[]> = {
-  Rooms: ["Name", "Capacity", "Features", "Times"],
-  Labs: ["Name", "Capacity", "Features", "Times"],
+function formatTableValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map(formatTableValue).filter(Boolean).join(", ");
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value)
+      .map(([key, item]) => {
+        const label = key.replaceAll("_", " ");
+        const formattedValue = formatTableValue(item);
+        return formattedValue ? `${label}: ${formattedValue}` : label;
+      })
+      .join("; ");
+  }
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function formatCellDisplay(value: string | undefined): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    try {
+      return formatTableValue(JSON.parse(trimmed));
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
+function formatTimeBlocks(value: unknown): string {
+  const days = asObject(value);
+  return Object.entries(days)
+    .map(([day, blocks]) => {
+      const summaries = Array.isArray(blocks)
+        ? blocks.map((blockValue) => {
+            const block = asObject(blockValue);
+            const range = `${String(block.start ?? "")}–${String(block.end ?? "")}`;
+            return block.spacing
+              ? `${range} (every ${String(block.spacing)} min)`
+              : range;
+          })
+        : [];
+      return `${day}: ${summaries.join(", ") || "unavailable"}`;
+    })
+    .join(" · ");
+}
+
+function formatMeetings(value: unknown): string {
+  if (!Array.isArray(value)) return "";
+  return value
+    .map((meetingValue) => {
+      const meeting = asObject(meetingValue);
+      const start = meeting.start_time ? ` ${String(meeting.start_time)}` : "";
+      const duration = meeting.duration
+        ? `, ${String(meeting.duration)} min`
+        : "";
+      const lab = meeting.lab ? ", lab" : "";
+      const delivery = meeting.delivery ? `, ${String(meeting.delivery)}` : "";
+      return `${String(meeting.day ?? "")}${start}${duration}${lab}${delivery}`;
+    })
+    .join("; ");
+}
+
+function formatConfigCell(
+  menu: string,
+  column: string,
+  value: string | undefined,
+): string {
+  if (!value) return "";
+  if (menu === "Timeslots" && column === "Times") {
+    try {
+      return formatTimeBlocks(JSON.parse(value));
+    } catch {
+      return formatCellDisplay(value);
+    }
+  }
+  if (
+    menu === "Class Patterns" &&
+    column === "Meetings"
+  ) {
+    try {
+      return formatMeetings(JSON.parse(value));
+    } catch {
+      return formatCellDisplay(value);
+    }
+  }
+  if (menu === "Class Patterns" && column === "Disabled") {
+    return value === "true" ? "Disabled" : "Enabled";
+  }
+  return formatCellDisplay(value);
+}
+
+function parseEditorJson(value: string, fallback: unknown): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+const editorDays = ["MON", "TUE", "WED", "THU", "FRI"];
+const listFields: Record<string, string[]> = {
+  Rooms: ["Features"],
+  Labs: ["Features"],
   Courses: [
-    "Course ID",
-    "Section ID",
-    "Credits",
-    "Capacity",
     "Room",
     "Lab",
     "Conflicts",
     "Faculty",
     "Alternate Faculty",
-    "Modality",
     "Required Room Features",
     "Required Lab Features",
-    "Reserve Room During Lab",
   ],
-  Faculty: [
-    "Name",
-    "Maximum Credits",
-    "Minimum Credits",
-    "Unique Course Limit",
-    "Maximum Days",
-    "Mandatory Days",
-    "Times",
-    "Course Preferences",
-    "Room Preferences",
-    "Lab Preferences",
-  ],
-  Timeslots: ["Times", "Classes", "Max Time Gap", "Min Time Overlap"],
-  "Class Patterns": ["Credits", "Meetings", "Disabled", "Start Time"],
-  Meetings: ["Day", "Start Time", "Duration", "Lab", "Delivery"],
 };
 
-type ConfigTableRow = Record<string, string>;
+const structuredEditorStyle = {
+  display: "grid",
+  gap: 12,
+  width: "100%",
+  minWidth: 280,
+  maxHeight: "32vh",
+  overflowY: "auto" as const,
+  marginTop: 4,
+  padding: 12,
+  border: "1px solid #cbd5e1",
+  borderRadius: 4,
+  boxSizing: "border-box" as const,
+  background: "#f8fafc",
+};
 
-function asObject(value: unknown): Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
+function ConfigFieldEditor({
+  menu,
+  column,
+  value,
+  onChange,
+  autoFocus = false,
+}: {
+  menu: string;
+  column: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoFocus?: boolean;
+}) {
+  if (
+    menu === "Faculty" &&
+    ["Course Preferences", "Room Preferences", "Lab Preferences"].includes(column)
+  ) {
+    const preferencesValue = parseEditorJson(value, {});
+    const preferences = asObject(preferencesValue);
+    const entries = Object.entries(preferences);
+    const updateEntries = (nextEntries: Array<[string, unknown]>) => {
+      onChange(JSON.stringify(Object.fromEntries(
+        nextEntries.filter(([key]) => key.trim() !== ""),
+      )));
+    };
 
-function toCellValue(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  return typeof value === "string" ? value : JSON.stringify(value);
-}
-
-function toTableRows(
-  menu: string,
-  values: unknown,
-): ConfigTableRow[] {
-  if (!Array.isArray(values)) return [];
-
-  const columns = configTableColumns[menu];
-  return values.map((value) => {
-    const source = asObject(value);
-    return Object.fromEntries(
-      columns.map((column) => {
-        const key = column.toLowerCase().replaceAll(" ", "_");
-        return [column, toCellValue(source[key])];
-      }),
+    return (
+      <div style={{ ...structuredEditorStyle, maxHeight: "24vh" }}>
+        {entries.map(([name, score], index) => (
+          <div
+            key={`${name}-${index}`}
+            style={{ display: "flex", alignItems: "end", gap: 8 }}
+          >
+            <label style={{ flex: "1 1 180px", fontSize: 12 }}>
+              {column.replace(" Preferences", "")}
+              <input
+                value={name}
+                onChange={(event) => {
+                  const nextEntries = [...entries] as Array<[string, unknown]>;
+                  nextEntries[index] = [event.target.value, score];
+                  updateEntries(nextEntries);
+                }}
+                style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+              />
+            </label>
+            <label style={{ flex: "0 1 110px", fontSize: 12 }}>
+              Score (0–10)
+              <input
+                type="number"
+                min={0}
+                max={10}
+                value={String(score)}
+                onChange={(event) => {
+                  const nextEntries = [...entries] as Array<[string, unknown]>;
+                  nextEntries[index] = [name, event.target.value === "" ? "" : Number(event.target.value)];
+                  updateEntries(nextEntries);
+                }}
+                style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => updateEntries(entries.filter((_, entryIndex) => entryIndex !== index))}
+              style={{ padding: 7, flexShrink: 0 }}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            let index = 1;
+            let name = "new";
+            while (Object.prototype.hasOwnProperty.call(preferences, name)) {
+              index += 1;
+              name = `new ${index}`;
+            }
+            updateEntries([...entries, [name, 0]]);
+          }}
+          style={{ justifySelf: "start", padding: "6px 9px" }}
+        >
+          + Add preference
+        </button>
+      </div>
     );
-  });
-}
+  }
 
-function getConfigTableRows(configValue: unknown): Record<string, ConfigTableRow[]> {
-  const root = asObject(configValue);
-  const config = asObject(root.config);
-  const timeSlotConfig = asObject(root.time_slot_config);
-  const classes = Array.isArray(timeSlotConfig.classes)
-    ? timeSlotConfig.classes
-    : [];
-  const meetings = classes.flatMap((classPattern) => {
-    const pattern = asObject(classPattern);
-    return Array.isArray(pattern.meetings) ? pattern.meetings : [];
-  });
+  if (menu === "Faculty" && column === "Mandatory Days") {
+    const selectedDaysValue = parseEditorJson(value, []);
+    const selectedDays = Array.isArray(selectedDaysValue)
+      ? selectedDaysValue.map(String)
+      : [];
+    return (
+      <div
+        role="group"
+        aria-label="Mandatory Days"
+        style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}
+      >
+        {editorDays.map((day) => (
+          <label
+            key={day}
+            style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+          >
+            <input
+              type="checkbox"
+              checked={selectedDays.includes(day)}
+              onChange={(event) => {
+                const nextDays = event.target.checked
+                  ? [...selectedDays, day]
+                  : selectedDays.filter((selectedDay) => selectedDay !== day);
+                onChange(JSON.stringify(nextDays));
+              }}
+            />
+            {day}
+          </label>
+        ))}
+      </div>
+    );
+  }
 
-  return {
-    Rooms: toTableRows("Rooms", config.rooms),
-    Labs: toTableRows("Labs", config.labs),
-    Courses: toTableRows("Courses", config.courses),
-    Faculty: toTableRows("Faculty", config.faculty),
-    Timeslots: toTableRows("Timeslots", [timeSlotConfig]),
-    "Class Patterns": toTableRows("Class Patterns", classes),
-    Meetings: toTableRows("Meetings", meetings),
-  };
+  if (listFields[menu]?.includes(column)) {
+    const listValue = parseEditorJson(value, []);
+    const textValue = Array.isArray(listValue)
+      ? listValue.map(String).join(", ")
+      : value;
+    return (
+      <input
+        autoFocus={autoFocus}
+        aria-label={column}
+        type="text"
+        placeholder="Separate values with commas"
+        value={textValue}
+        onChange={(event) =>
+          onChange(JSON.stringify(
+            event.target.value
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean),
+          ))
+        }
+        style={{
+          display: "block",
+          width: "100%",
+          marginTop: 4,
+          padding: 8,
+          border: "1px solid #cbd5e1",
+          borderRadius: 4,
+          boxSizing: "border-box",
+        }}
+      />
+    );
+  }
+
+  if (
+    ["Rooms", "Labs", "Faculty"].includes(menu) &&
+    column === "Times"
+  ) {
+    const times = asObject(parseEditorJson(value, {}));
+    return (
+      <div style={structuredEditorStyle}>
+        {editorDays.map((day) => {
+          const ranges = Array.isArray(times[day]) ? times[day] : [];
+          return (
+            <fieldset
+              key={day}
+              style={{ margin: 0, padding: 10, border: "1px solid #cbd5e1", borderRadius: 4 }}
+            >
+              <legend style={{ padding: "0 4px", fontWeight: "bold" }}>{day}</legend>
+              {ranges.map((rangeValue, index) => {
+                const range = asObject(rangeValue);
+                return (
+                  <div
+                    key={`${day}-${index}`}
+                    style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 8, marginBottom: 8 }}
+                  >
+                    {([
+                      ["start", "Start"],
+                      ["end", "End"],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} style={{ flex: "1 1 120px", fontSize: 12 }}>
+                        {label}
+                        <input
+                          autoFocus={autoFocus && day === editorDays[0] && index === 0 && key === "start"}
+                          aria-label={`${day} ${label}`}
+                          type="time"
+                          value={String(range[key] ?? "")}
+                          onChange={(event) => {
+                            const updatedRanges = ranges.map((entry, rangeIndex) =>
+                              rangeIndex === index
+                                ? { ...asObject(entry), [key]: event.target.value }
+                                : entry,
+                            );
+                            onChange(JSON.stringify({ ...times, [day]: updatedRanges }));
+                          }}
+                          style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+                        />
+                      </label>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => onChange(JSON.stringify({
+                        ...times,
+                        [day]: ranges.filter((_, rangeIndex) => rangeIndex !== index),
+                      }))}
+                      style={{ padding: 7, flexShrink: 0 }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => onChange(JSON.stringify({
+                  ...times,
+                  [day]: [...ranges, { start: "", end: "" }],
+                }))}
+                style={{ padding: "6px 9px" }}
+              >
+                + Add time range
+              </button>
+            </fieldset>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (menu === "Timeslots" && column === "Times") {
+    const times = asObject(
+      parseEditorJson(value, Object.fromEntries(editorDays.map((day) => [day, []]))),
+    );
+    return (
+      <div style={structuredEditorStyle}>
+        {editorDays.map((day) => {
+          const blocks = Array.isArray(times[day]) ? times[day] : [];
+          return (
+            <fieldset
+              key={day}
+              style={{ margin: 0, padding: 10, border: "1px solid #cbd5e1", borderRadius: 4 }}
+            >
+              <legend style={{ padding: "0 4px", fontWeight: "bold" }}>{day}</legend>
+              {blocks.map((blockValue, index) => {
+                const block = asObject(blockValue);
+                return (
+                  <div
+                    key={`${day}-${index}`}
+                    style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 8, marginBottom: 8 }}
+                  >
+                    {([
+                      ["start", "Start", "time"],
+                      ["spacing", "Spacing (min)", "number"],
+                      ["end", "End", "time"],
+                    ] as const).map(([key, label, type]) => (
+                      <label key={key} style={{ flex: "1 1 100px", fontSize: 12 }}>
+                        {label}
+                        <input
+                          autoFocus={autoFocus && day === editorDays[0] && index === 0 && key === "start"}
+                          aria-label={`${day} ${label}`}
+                          type={type}
+                          value={String(block[key] ?? "")}
+                          onChange={(event) => {
+                            const updatedBlocks = blocks.map((entry, blockIndex) =>
+                              blockIndex === index
+                                ? { ...asObject(entry), [key]: type === "number" ? Number(event.target.value) : event.target.value }
+                                : entry,
+                            );
+                            onChange(JSON.stringify({ ...times, [day]: updatedBlocks }));
+                          }}
+                          style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+                        />
+                      </label>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => onChange(JSON.stringify({
+                        ...times,
+                        [day]: blocks.filter((_, blockIndex) => blockIndex !== index),
+                      }))}
+                      style={{ padding: 7, flexShrink: 0 }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => onChange(JSON.stringify({
+                  ...times,
+                  [day]: [...blocks, { start: "", spacing: 60, end: "" }],
+                }))}
+                style={{ padding: "6px 9px" }}
+              >
+                + Add time block
+              </button>
+            </fieldset>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (menu === "Class Patterns" && column === "Meetings") {
+    const meetingsValue = parseEditorJson(value, []);
+    const meetings = Array.isArray(meetingsValue) ? meetingsValue : [];
+    return (
+      <div style={structuredEditorStyle}>
+        {meetings.map((meetingValue, index) => {
+          const meeting = asObject(meetingValue);
+          const updateMeeting = (key: string, nextValue: unknown) => {
+            onChange(JSON.stringify(
+              meetings.map((item, meetingIndex) =>
+                meetingIndex === index
+                  ? { ...asObject(item), [key]: nextValue }
+                  : item,
+              ),
+            ));
+          };
+          return (
+            <fieldset
+              key={`meeting-${index}`}
+              style={{ margin: 0, padding: 10, border: "1px solid #cbd5e1", borderRadius: 4 }}
+            >
+              <legend style={{ padding: "0 4px", fontWeight: "bold" }}>Meeting {index + 1}</legend>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 8 }}>
+                <label style={{ flex: "1 1 100px", fontSize: 12 }}>
+                  Day
+                  <select
+                    value={String(meeting.day ?? "MON")}
+                    onChange={(event) => updateMeeting("day", event.target.value)}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: 7 }}
+                  >
+                    {editorDays.map((day) => <option key={day} value={day}>{day}</option>)}
+                  </select>
+                </label>
+                <label style={{ flex: "1 1 125px", fontSize: 12 }}>
+                  Start time
+                  <input
+                    type="time"
+                    value={String(meeting.start_time ?? "")}
+                    onChange={(event) => updateMeeting("start_time", event.target.value || null)}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+                  />
+                </label>
+                <label style={{ flex: "1 1 100px", fontSize: 12 }}>
+                  Duration (min)
+                  <input
+                    type="number"
+                    value={String(meeting.duration ?? "")}
+                    onChange={(event) => updateMeeting("duration", Number(event.target.value))}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+                  />
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 34, fontSize: 12 }}>
+                  <input
+                    type="checkbox"
+                    checked={meeting.lab === true}
+                    onChange={(event) => updateMeeting("lab", event.target.checked)}
+                  />
+                  Lab meeting
+                </label>
+                <label style={{ flex: "1 1 120px", fontSize: 12 }}>
+                  Delivery
+                  <select
+                    value={String(meeting.delivery ?? "in_person")}
+                    onChange={(event) => updateMeeting("delivery", event.target.value)}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: 7 }}
+                  >
+                    <option value="in_person">In person</option>
+                    <option value="online">Online</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => onChange(JSON.stringify(meetings.filter((_, meetingIndex) => meetingIndex !== index)))}
+                  style={{ padding: 7, flexShrink: 0 }}
+                >
+                  Remove
+                </button>
+              </div>
+            </fieldset>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => onChange(JSON.stringify([
+            ...meetings,
+            { day: "MON", duration: 60, lab: false, delivery: "in_person", start_time: null },
+          ]))}
+          style={{ justifySelf: "start", padding: "6px 9px" }}
+        >
+          + Add meeting
+        </button>
+      </div>
+    );
+  }
+
+  const isBooleanField =
+    (menu === "Class Patterns" && column === "Disabled") ||
+    (menu === "Courses" && column === "Reserve Room During Lab");
+  if (isBooleanField) {
+    return (
+      <input
+        autoFocus={autoFocus}
+        aria-label={column}
+        type="checkbox"
+        checked={value === "true"}
+        onChange={(event) => onChange(String(event.target.checked))}
+        style={{ display: "block", marginTop: 8 }}
+      />
+    );
+  }
+
+  const isNumberField =
+    (menu === "Timeslots" &&
+      ["Max Time Gap", "Min Time Overlap"].includes(column)) ||
+    (menu === "Class Patterns" && column === "Credits");
+  const isTimeField =
+    (menu === "Class Patterns" && column === "Start Time") ||
+    (menu === "Timeslots" && column === "Start Time");
+  return (
+    <input
+      autoFocus={autoFocus}
+      aria-label={column}
+      type={isNumberField ? "number" : isTimeField ? "time" : "text"}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      style={{
+        display: "block",
+        width: "100%",
+        marginTop: 4,
+        padding: 8,
+        border: "1px solid #cbd5e1",
+        borderRadius: 4,
+        boxSizing: "border-box",
+      }}
+    />
+  );
 }
 
 const optimizerFlagOptions = [
@@ -127,6 +619,12 @@ export default function MainMenu() {
   const [configLoading, setConfigLoading] = useState(false);
   const [configStatus, setConfigStatus] = useState("");
   const [configErrors, setConfigErrors] = useState<string[]>([]);
+  const [originalEditorConfig, setOriginalEditorConfig] = useState<unknown>(null);
+  const [editorFileName, setEditorFileName] = useState("");
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [editorSaveStatus, setEditorSaveStatus] = useState("");
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [editorFileController] = useState(createConfigFileController);
   const buttonStyle = (active: boolean) => ({
     width: "100%",
     padding: "10px 12px",
@@ -165,11 +663,55 @@ export default function MainMenu() {
     }
   };
   const handleEditorConfigSelected = (config: unknown) => {
+    setOriginalEditorConfig(config);
     setConfigRows(getConfigTableRows(config));
+    setEditorDirty(false);
+    setEditorSaveStatus("");
     setEditingRowIndex(null);
     setEditedRow({});
     setAddWindowOpen(false);
     setNewRow({});
+  };
+  const handleChooseEditorFile = async (): Promise<OpenedConfigFile | null> => {
+    const selected = await editorFileController.open();
+    if (selected) {
+      setEditorFileName(selected.file.name);
+    }
+    return selected ? { file: selected.file, config: selected.config } : null;
+  };
+  const handleCreateNewConfig = () => {
+    editorFileController.clear();
+    setEditorFileName("");
+    setOriginalEditorConfig(null);
+    setConfigRows({});
+    setEditorDirty(false);
+    setEditorSaveStatus("");
+    setEditingRowIndex(null);
+    setEditedRow({});
+    setAddWindowOpen(false);
+    setNewRow({});
+  };
+  const handleSaveEditorConfig = async () => {
+    if (originalEditorConfig === null || !editorFileName) {
+      setEditorSaveStatus("Choose an existing configuration file before saving.");
+      return;
+    }
+
+    setEditorSaving(true);
+    setEditorSaveStatus("Saving changes...");
+    try {
+      const updatedConfig = applyConfigTableRows(originalEditorConfig, configRows);
+      await editorFileController.save(updatedConfig);
+      setOriginalEditorConfig(updatedConfig);
+      setEditorDirty(false);
+      setEditorSaveStatus(`Saved changes to ${editorFileName}.`);
+    } catch (error) {
+      setEditorSaveStatus(
+        error instanceof Error ? error.message : "Could not save the configuration file.",
+      );
+    } finally {
+      setEditorSaving(false);
+    }
   };
   return (
     <div
@@ -300,7 +842,11 @@ export default function MainMenu() {
                 boxSizing: "border-box",
               }}
             >
-              <App onConfigSelected={handleEditorConfigSelected} />{" "}
+              <App
+                onConfigSelected={handleEditorConfigSelected}
+                onChooseFile={handleChooseEditorFile}
+                onCreateNew={handleCreateNewConfig}
+              />{" "}
             </div>
           )}{" "}
           {/* Configuration Sections */}{" "}
@@ -386,13 +932,12 @@ export default function MainMenu() {
                               height: 48,
                               padding: 8,
                               borderBottom: "1px solid #e2e8f0",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
+                              overflowWrap: "anywhere",
+                              whiteSpace: "normal",
                               textAlign: "center",
                             }}
                           >
-                            {row[column] ?? ""}
+                            {formatConfigCell(activeMenu, column, row[column])}
                           </td>
                         ))}
                         <td
@@ -435,6 +980,7 @@ export default function MainMenu() {
                                   (_, index) => index !== rowIndex
                                 ),
                               }));
+                              setEditorDirty(true);
                               setEditingRowIndex(null);
                               setEditedRow({});
                             }}
@@ -501,33 +1047,30 @@ export default function MainMenu() {
                   aria-label={`Edit ${activeMenu} row`}
                   style={{
                     display: "flex",
-                    alignItems: "flex-end",
+                    alignItems: "flex-start",
+                    flexWrap: "wrap",
                     gap: 12,
                     flexShrink: 0,
+                    maxHeight: "45%",
                     marginTop: 12,
                     padding: 16,
                     background: "white",
                     border: "1px solid #cbd5e1",
                     borderRadius: 8,
                     boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
-                    overflowX: "auto",
+                    overflow: "auto",
                   }}
                 >
                   {configTableColumns[activeMenu].map((column) => (
                     <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
                       {column}
-                      <input
+                      <ConfigFieldEditor
+                        menu={activeMenu}
+                        column={column}
                         value={editedRow[column] ?? ""}
-                        onChange={(event) => setEditedRow((current) => ({ ...current, [column]: event.target.value }))}
-                        style={{
-                          display: "block",
-                          width: "100%",
-                          marginTop: 4,
-                          padding: 8,
-                          border: "1px solid #cbd5e1",
-                          borderRadius: 4,
-                          boxSizing: "border-box",
-                        }}
+                        onChange={(value) =>
+                          setEditedRow((current) => ({ ...current, [column]: value }))
+                        }
                       />
                     </label>
                   ))}
@@ -550,12 +1093,13 @@ export default function MainMenu() {
                           index === editingRowIndex ? editedRow : row
                         ),
                       }));
+                      setEditorDirty(true);
                       setEditingRowIndex(null);
                       setEditedRow({});
                     }}
                     style={{ padding: "8px 12px", background: "#334155", color: "white", border: 0, borderRadius: 6, flexShrink: 0 }}
                   >
-                    Save
+                    Apply to Draft
                   </button>
                 </div>
               )}
@@ -569,22 +1113,25 @@ export default function MainMenu() {
                       ...current,
                       [activeMenu]: [...rows, newRow],
                     }));
+                    setEditorDirty(true);
                     setAddWindowOpen(false);
                     setEditingRowIndex(newRowIndex);
                     setEditedRow({ ...newRow });
                   }}
                   style={{
                     display: "flex",
-                    alignItems: "flex-end",
+                    alignItems: "flex-start",
+                    flexWrap: "wrap",
                     gap: 12,
                     flexShrink: 0,
+                    maxHeight: "45%",
                     marginTop: 12,
                     padding: 16,
                     background: "#d7d7d7",
                     border: "1px solid #cbd5e1",
                     borderRadius: 8,
                     boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
-                    overflowX: "auto",
+                    overflow: "auto",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
@@ -593,21 +1140,14 @@ export default function MainMenu() {
                   {configTableColumns[activeMenu].map((column) => (
                     <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
                       {column}
-                      <input
-                        autoFocus={column === configTableColumns[activeMenu][0]}
+                      <ConfigFieldEditor
+                        menu={activeMenu}
+                        column={column}
                         value={newRow[column] ?? ""}
-                        onChange={(event) =>
-                          setNewRow((current) => ({ ...current, [column]: event.target.value }))
+                        autoFocus={column === configTableColumns[activeMenu][0]}
+                        onChange={(value) =>
+                          setNewRow((current) => ({ ...current, [column]: value }))
                         }
-                        style={{
-                          display: "block",
-                          width: "100%",
-                          marginTop: 4,
-                          padding: 8,
-                          border: "1px solid #cbd5e1",
-                          borderRadius: 4,
-                          boxSizing: "border-box",
-                        }}
                       />
                     </label>
                   ))}
@@ -636,6 +1176,55 @@ export default function MainMenu() {
                   </button>
                 </form>
               )}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  flexShrink: 0,
+                  marginTop: 12,
+                  paddingTop: 12,
+                  borderTop: "1px solid #cbd5e1",
+                }}
+              >
+                <div>
+                  {editorFileName && (
+                    <span style={{ color: "#475569", fontSize: 13 }}>
+                      Editing {editorFileName}
+                    </span>
+                  )}
+                  {editorSaveStatus && (
+                    <p role="status" style={{ margin: "4px 0 0", color: "#475569", fontSize: 13 }}>
+                      {editorSaveStatus}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveEditorConfig()}
+                  disabled={
+                    !editorDirty ||
+                    !editorFileName ||
+                    editorSaving ||
+                    editingRowIndex !== null ||
+                    addWindowOpen
+                  }
+                  style={{
+                    padding: "9px 14px",
+                    border: 0,
+                    borderRadius: 6,
+                    background:
+                      editorDirty && editorFileName ? "#334155" : "#94a3b8",
+                    color: "white",
+                    fontWeight: "bold",
+                    cursor:
+                      editorDirty && editorFileName ? "pointer" : "not-allowed",
+                  }}
+                >
+                  {editorSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
             </section>
           )}{" "}
           {/* Schedule Generator */}{" "}
