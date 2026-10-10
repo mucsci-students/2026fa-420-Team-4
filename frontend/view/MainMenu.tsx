@@ -638,6 +638,9 @@ export default function MainMenu() {
   const [editorSaveStatus, setEditorSaveStatus] = useState("");
   const [editorSaveFailed, setEditorSaveFailed] = useState(false);
   const [editorSaving, setEditorSaving] = useState(false);
+  const [editorDraftStatus, setEditorDraftStatus] = useState("");
+  const [editorDraftErrors, setEditorDraftErrors] = useState<string[]>([]);
+  const [editorDraftChecking, setEditorDraftChecking] = useState(false);
   const [editorFileController] = useState(createConfigFileController);
   const [generationSettingsController] = useState(
     createGenerationSettingsController,
@@ -738,6 +741,8 @@ export default function MainMenu() {
     setEditorDirty(false);
     setEditorSaveStatus("");
     setEditorSaveFailed(false);
+    setEditorDraftStatus("");
+    setEditorDraftErrors([]);
     setEditingRowIndex(null);
     setEditedRow({});
     setAddWindowOpen(false);
@@ -758,10 +763,53 @@ export default function MainMenu() {
     setEditorDirty(true);
     setEditorSaveStatus("");
     setEditorSaveFailed(false);
+    setEditorDraftStatus("");
+    setEditorDraftErrors([]);
     setEditingRowIndex(null);
     setEditedRow({});
     setAddWindowOpen(false);
     setNewRow({});
+  };
+  const validateEditorDraft = async (
+    draftTables: Record<string, ConfigTableRow[]>,
+  ) => {
+    if (originalEditorConfig === null || !editorFileName) return;
+
+    setEditorDraftChecking(true);
+    setEditorDraftStatus("Checking changes...");
+    setEditorDraftErrors([]);
+    try {
+      const draftConfig = applyConfigTableRows(originalEditorConfig, draftTables);
+      const draftFile = new File(
+        [`${JSON.stringify(draftConfig, null, 2)}\n`],
+        editorFileName,
+        { type: "application/json" },
+      );
+      await validateConfig(draftFile);
+      setEditorDraftStatus("Changes pass validation.");
+    } catch (error) {
+      let messages = [
+        error instanceof Error
+          ? error.message
+          : "Could not validate the configuration changes.",
+      ];
+      if (
+        axios.isAxiosError<{
+          detail?: { errors?: string[] } | string;
+        }>(error)
+      ) {
+        const detail = error.response?.data?.detail;
+        if (typeof detail === "string") {
+          messages = [detail];
+        } else if (detail?.errors?.length) {
+          messages = detail.errors;
+        }
+      }
+      setEditorDraftStatus("Changes need attention.");
+      setEditorDraftErrors(formatConfigErrors(messages));
+    } finally {
+      setEditorDraftChecking(false);
+    }
   };
   const handleSaveEditorConfig = async () => {
     if (originalEditorConfig === null || !editorFileName) {
@@ -1182,16 +1230,20 @@ export default function MainMenu() {
                   </button>
                   <button
                     type="button"
+                    disabled={editorDraftChecking}
                     onClick={() => {
-                      setConfigRows((current) => ({
-                        ...current,
-                        [activeMenu]: (current[activeMenu] ?? []).map((row, index) =>
-                          index === editingRowIndex ? editedRow : row
+                      const updatedTables = {
+                        ...configRows,
+                        [activeMenu]: (configRows[activeMenu] ?? []).map(
+                          (row, index) =>
+                            index === editingRowIndex ? editedRow : row,
                         ),
-                      }));
+                      };
+                      setConfigRows(updatedTables);
                       setEditorDirty(true);
                       setEditingRowIndex(null);
                       setEditedRow({});
+                      void validateEditorDraft(updatedTables);
                     }}
                     style={{ padding: "8px 12px", background: "#334155", color: "white", border: 0, borderRadius: 6, flexShrink: 0 }}
                   >
@@ -1204,13 +1256,15 @@ export default function MainMenu() {
                   onSubmit={(event) => {
                     event.preventDefault();
                     const rows = configRows[activeMenu] ?? [];
-                    setConfigRows((current) => ({
-                      ...current,
+                    const updatedTables = {
+                      ...configRows,
                       [activeMenu]: [...rows, newRow],
-                    }));
+                    };
+                    setConfigRows(updatedTables);
                     setEditorDirty(true);
                     setAddWindowOpen(false);
                     setNewRow({});
+                    void validateEditorDraft(updatedTables);
                   }}
                   style={{
                     display: "flex",
@@ -1257,6 +1311,7 @@ export default function MainMenu() {
                   </button>
                   <button
                     type="submit"
+                    disabled={editorDraftChecking}
                     style={{
                       padding: "8px 12px",
                       background: "#334155",
@@ -1269,6 +1324,31 @@ export default function MainMenu() {
                     Add
                   </button>
                 </form>
+              )}
+              {(editorDraftStatus || editorDraftErrors.length > 0) && (
+                <div
+                  role={editorDraftErrors.length > 0 ? "alert" : "status"}
+                  style={{
+                    marginTop: 12,
+                    padding: "10px 14px",
+                    color: editorDraftErrors.length > 0 ? "#991b1b" : "#166534",
+                    background:
+                      editorDraftErrors.length > 0 ? "#fef2f2" : "#f0fdf4",
+                    border: `1px solid ${
+                      editorDraftErrors.length > 0 ? "#fecaca" : "#bbf7d0"
+                    }`,
+                    borderRadius: 6,
+                  }}
+                >
+                  <strong>{editorDraftStatus}</strong>
+                  {editorDraftErrors.length > 0 && (
+                    <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
+                      {editorDraftErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
               <div
                 style={{
