@@ -786,7 +786,7 @@ export default function MainMenu() {
                   cursor: "pointer",
                 }}
               >
-                Export Schedule
+                Export Schedule as CSV
               </button>{" "}
             </section>
           )}{" "}
