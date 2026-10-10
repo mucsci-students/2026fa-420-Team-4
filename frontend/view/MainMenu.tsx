@@ -45,6 +45,61 @@ const configTableColumns: Record<string, string[]> = {
   "Class Patterns": ["Credits", "Meetings", "Disabled", "Start Time"],
   Meetings: ["Day", "Start Time", "Duration", "Lab", "Delivery"],
 };
+
+type ConfigTableRow = Record<string, string>;
+
+function asObject(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function toCellValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+function toTableRows(
+  menu: string,
+  values: unknown,
+): ConfigTableRow[] {
+  if (!Array.isArray(values)) return [];
+
+  const columns = configTableColumns[menu];
+  return values.map((value) => {
+    const source = asObject(value);
+    return Object.fromEntries(
+      columns.map((column) => {
+        const key = column.toLowerCase().replaceAll(" ", "_");
+        return [column, toCellValue(source[key])];
+      }),
+    );
+  });
+}
+
+function getConfigTableRows(configValue: unknown): Record<string, ConfigTableRow[]> {
+  const root = asObject(configValue);
+  const config = asObject(root.config);
+  const timeSlotConfig = asObject(root.time_slot_config);
+  const classes = Array.isArray(timeSlotConfig.classes)
+    ? timeSlotConfig.classes
+    : [];
+  const meetings = classes.flatMap((classPattern) => {
+    const pattern = asObject(classPattern);
+    return Array.isArray(pattern.meetings) ? pattern.meetings : [];
+  });
+
+  return {
+    Rooms: toTableRows("Rooms", config.rooms),
+    Labs: toTableRows("Labs", config.labs),
+    Courses: toTableRows("Courses", config.courses),
+    Faculty: toTableRows("Faculty", config.faculty),
+    Timeslots: toTableRows("Timeslots", [timeSlotConfig]),
+    "Class Patterns": toTableRows("Class Patterns", classes),
+    Meetings: toTableRows("Meetings", meetings),
+  };
+}
+
 const optimizerFlagOptions = [
   { value: "faculty_course", label: "Faculty → Course Preference" },
   { value: "faculty_room", label: "Faculty → Room Preference" },
@@ -66,7 +121,7 @@ export default function MainMenu() {
   const [editedRow, setEditedRow] = useState<Record<string, string>>({});
   // Keep rows separated by submenu so switching tables does not lose entered data.
   const [configRows, setConfigRows] = useState<
-    Record<string, Array<Record<string, string>>>
+    Record<string, ConfigTableRow[]>
   >({});
   const [configFile, setConfigFile] = useState<File | null>(null);
   const [configLoading, setConfigLoading] = useState(false);
@@ -108,6 +163,13 @@ export default function MainMenu() {
     } finally {
       setConfigLoading(false);
     }
+  };
+  const handleEditorConfigSelected = (config: unknown) => {
+    setConfigRows(getConfigTableRows(config));
+    setEditingRowIndex(null);
+    setEditedRow({});
+    setAddWindowOpen(false);
+    setNewRow({});
   };
   return (
     <div
@@ -238,7 +300,7 @@ export default function MainMenu() {
                 boxSizing: "border-box",
               }}
             >
-              <App />{" "}
+              <App onConfigSelected={handleEditorConfigSelected} />{" "}
             </div>
           )}{" "}
           {/* Configuration Sections */}{" "}

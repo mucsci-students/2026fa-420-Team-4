@@ -2,15 +2,33 @@
 import React, { useState } from 'react';
 import { uploadConfig } from './api';
 
-export function App() {
+interface AppProps {
+  onConfigSelected: (config: unknown) => void;
+}
+
+export function App({ onConfigSelected }: AppProps) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>('');
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    setFile(selectedFile);
+    setErrors([]);
+    setStatus('Reading configuration...');
+
+    try {
+      const config: unknown = JSON.parse(await selectedFile.text());
+      onConfigSelected(config);
+      setStatus(`Loaded ${selectedFile.name} into the editor.`);
+    } catch (error) {
+      setStatus('Could not read configuration file.');
+      setErrors([
+        error instanceof Error ? error.message : 'Invalid JSON file.',
+      ]);
     }
   };
 
@@ -53,7 +71,7 @@ export function App() {
             Create New Config
           </button>
         </div>
-        <input type="file" accept=".json" onChange={handleFileChange} />
+        <input type="file" accept=".json,application/json" onChange={handleFileChange} />
         <button onClick={handleUpload} disabled={!file || loading} style={{ marginLeft: '10px' }}>
           {loading ? 'Loading...' : 'Load Config'}
         </button>
