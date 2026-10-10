@@ -12,22 +12,38 @@ const configMenus = [
 ];
 // Each configuration submenu gets its own table schema and matching input fields.
 const configTableColumns: Record<string, string[]> = {
-  Rooms: ["Name", "Capacity", "Features", "Availability"],
-  Labs: ["Name", "Capacity", "Features", "Availability"],
+  Rooms: ["Name", "Capacity", "Features", "Times"],
+  Labs: ["Name", "Capacity", "Features", "Times"],
   Courses: [
-    "ID",
+    "Course ID",
+    "Section ID",
     "Credits",
     "Capacity",
-    "Resources",
+    "Room",
+    "Lab",
     "Conflicts",
     "Faculty",
+    "Alternate Faculty",
     "Modality",
-    "Requirements",
+    "Required Room Features",
+    "Required Lab Features",
+    "Reserve Room During Lab",
   ],
-  Faculty: ["Workload limits", "Availability", "Mandatory days", "Preferences"],
-  Timeslots: ["MON", "TUE", "WED", "THU", "FRI"],
-  "Class Patterns": ["Credits", "Enabled State", "Start Times", "Meetings"],
-  Meetings: ["Day", "Duration", "Lab Designation", "Delivery Mode", "Optional Start Time"],
+  Faculty: [
+    "Name",
+    "Maximum Credits",
+    "Minimum Credits",
+    "Unique Course Limit",
+    "Maximum Days",
+    "Mandatory Days",
+    "Times",
+    "Course Preferences",
+    "Room Preferences",
+    "Lab Preferences",
+  ],
+  Timeslots: ["Times", "Classes", "Max Time Gap", "Min Time Overlap"],
+  "Class Patterns": ["Credits", "Meetings", "Disabled", "Start Time"],
+  Meetings: ["Day", "Start Time", "Duration", "Lab", "Delivery"],
 };
 const optimizerFlagOptions = [
   { value: "faculty_course", label: "Faculty → Course Preference" },
@@ -44,7 +60,6 @@ export default function MainMenu() {
   const [configOpen, setConfigOpen] = useState(true);
   const [generationLimit, setGenerationLimit] = useState(10);
   const [optimizerFlags, setOptimizerFlags] = useState<string[]>([]);
-  const [openRowMenu, setOpenRowMenu] = useState<number | null>(null);
   const [addWindowOpen, setAddWindowOpen] = useState(false);
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
@@ -166,7 +181,6 @@ export default function MainMenu() {
                     setEditedRow({});
                     setAddWindowOpen(false);
                     setNewRow({});
-                    setOpenRowMenu(null);
                   }}
                 >
                   {" "}
@@ -235,7 +249,7 @@ export default function MainMenu() {
                 flexDirection: "column",
                 height: "100%",
                 minHeight: 0,
-                overflow: "auto",
+                overflow: "hidden",
                 background: "white",
                 border: "1px solid #cbd5e1",
                 borderRadius: 8,
@@ -266,7 +280,7 @@ export default function MainMenu() {
                         style={{ width: Math.max(160, column.length * 12 + 40) }}
                       />
                     ))}
-                    <col style={{ width: 80 }} />
+                    <col style={{ width: 170 }} />
                   </colgroup>
                   <thead>
                     <tr>
@@ -295,7 +309,7 @@ export default function MainMenu() {
                           textAlign: "center",
                         }}
                       >
-
+                        Actions
                       </th>
 
                     </tr>
@@ -326,81 +340,54 @@ export default function MainMenu() {
                             padding: 8,
                             borderBottom: "1px solid #e2e8f0",
                             textAlign: "center",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           <button
                             type="button"
-                            aria-haspopup="menu"
-                            aria-expanded={openRowMenu === rowIndex}
-                            onClick={() =>
-                              setOpenRowMenu((current) =>
-                                current === rowIndex ? null : rowIndex
-                              )
-                            }
+                            aria-label={`Edit ${activeMenu} row ${rowIndex + 1}`}
+                            onClick={() => {
+                              setEditedRow({ ...row });
+                              setEditingRowIndex(rowIndex);
+                            }}
                             style={{
-                              padding: "7px 12px",
+                              padding: "7px 8px",
                               border: "1px solid #cbd5e1",
                               borderRadius: 4,
                               background: "white",
+                              color: "#0f172a",
+                              fontSize: 12,
+                              cursor: "pointer",
+                              marginRight: 4,
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Delete ${activeMenu} row ${rowIndex + 1}`}
+                            onClick={() => {
+                              setConfigRows((current) => ({
+                                ...current,
+                                [activeMenu]: (current[activeMenu] ?? []).filter(
+                                  (_, index) => index !== rowIndex
+                                ),
+                              }));
+                              setEditingRowIndex(null);
+                              setEditedRow({});
+                            }}
+                            style={{
+                              padding: "7px 8px",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 4,
+                              background: "white",
+                              color: "#0f172a",
+                              fontSize: 12,
                               cursor: "pointer",
                             }}
                           >
-                            ... ▾
+                            Delete
                           </button>
-                          {openRowMenu === rowIndex && (
-                            <div
-                              role="menu"
-                              style={{
-                                position: "absolute",
-                                zIndex: 1,
-                                top: "100%",
-                                right: 8,
-                                minWidth: 120,
-                                padding: 4,
-                                background: "white",
-                                border: "1px solid #cbd5e1",
-                                borderRadius: 4,
-                                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.12)",
-                              }}
-                            >
-                              {(["Modify", "Remove"] as const).map(
-                                (action) => (
-                                  <button
-                                    key={action}
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => {
-                                      if (action === "Modify") {
-                                        setEditedRow({ ...row });
-                                        setEditingRowIndex(rowIndex);
-                                      } else {
-                                        setConfigRows((current) => ({
-                                          ...current,
-                                          [activeMenu]: (current[activeMenu] ?? []).filter(
-                                            (_, index) => index !== rowIndex
-                                          ),
-                                        }));
-                                        setEditingRowIndex(null);
-                                        setEditedRow({});
-                                      }
-                                      setOpenRowMenu(null);
-                                    }}
-                                    style={{
-                                      display: "block",
-                                      width: "100%",
-                                      padding: "8px 10px",
-                                      border: 0,
-                                      background: "white",
-                                      textAlign: "left",
-                                      cursor: "pointer",
-                                    }}
-                                  >
-                                    {action}
-                                  </button>
-                                )
-                              )}
-                            </div>
-                          )}
                         </td>
                       </tr>
                     ))}
@@ -410,13 +397,11 @@ export default function MainMenu() {
               {editingRowIndex === null && !addWindowOpen && (
                 <div
                   style={{
-                    position: "fixed",
-                    right: 24,
-                    bottom: 24,
-                    zIndex: 10,
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
+                    flexShrink: 0,
+                    marginTop: 12,
                     padding: "10px 12px",
                     background: "#d7d7d7",
                     border: "1px solid #cbd5e1",
@@ -453,14 +438,11 @@ export default function MainMenu() {
                   role="region"
                   aria-label={`Edit ${activeMenu} row`}
                   style={{
-                    position: "fixed",
-                    left: 226,
-                    right: 16,
-                    bottom: 16,
-                    zIndex: 20,
                     display: "flex",
                     alignItems: "flex-end",
                     gap: 12,
+                    flexShrink: 0,
+                    marginTop: 12,
                     padding: 16,
                     background: "white",
                     border: "1px solid #cbd5e1",
@@ -529,22 +511,22 @@ export default function MainMenu() {
                       window.alert(Object.values(errors).join("\n"));
                       return;
                     }
+                    const rows = configRows[activeMenu] ?? [];
+                    const newRowIndex = rows.length;
                     setConfigRows((current) => ({
                       ...current,
-                      [activeMenu]: [...(current[activeMenu] ?? []), newRow],
+                      [activeMenu]: [...rows, newRow],
                     }));
                     setAddWindowOpen(false);
-                    setNewRow({});
+                    setEditingRowIndex(newRowIndex);
+                    setEditedRow({ ...newRow });
                   }}
                   style={{
-                    position: "fixed",
-                    left: 226,
-                    right: 16,
-                    bottom: 16,
-                    zIndex: 20,
                     display: "flex",
                     alignItems: "flex-end",
                     gap: 12,
+                    flexShrink: 0,
+                    marginTop: 12,
                     padding: 16,
                     background: "#d7d7d7",
                     border: "1px solid #cbd5e1",
