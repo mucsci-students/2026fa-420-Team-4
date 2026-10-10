@@ -117,6 +117,21 @@ function parseEditorJson(value: string, fallback: unknown): unknown {
 }
 
 const editorDays = ["MON", "TUE", "WED", "THU", "FRI"];
+const preferenceColumns = ["Course Preferences", "Room Preferences", "Lab Preferences"];
+
+function prepareRowForCommit(menu: string, row: ConfigTableRow): ConfigTableRow {
+  if (menu !== "Faculty") return row;
+  return Object.fromEntries(Object.entries(row).map(([column, value]) => [
+    column,
+    preferenceColumns.includes(column) && value !== ""
+      ? JSON.stringify(Object.fromEntries(
+          Object.entries(asObject(parseEditorJson(value, {})))
+            .filter(([name]) => name.trim() !== ""),
+        ))
+      : value,
+  ]));
+}
+
 const listFields: Record<string, string[]> = {
   Rooms: ["Features"],
   Labs: ["Features"],
@@ -161,22 +176,20 @@ function ConfigFieldEditor({
 }) {
   if (
     menu === "Faculty" &&
-    ["Course Preferences", "Room Preferences", "Lab Preferences"].includes(column)
+    preferenceColumns.includes(column)
   ) {
     const preferencesValue = parseEditorJson(value, {});
     const preferences = asObject(preferencesValue);
     const entries = Object.entries(preferences);
     const updateEntries = (nextEntries: Array<[string, unknown]>) => {
-      onChange(JSON.stringify(Object.fromEntries(
-        nextEntries.filter(([key]) => key.trim() !== ""),
-      )));
+      onChange(JSON.stringify(Object.fromEntries(nextEntries)));
     };
 
      return (
       <div style={{ ...structuredEditorStyle, maxHeight: "24vh" }}>
         {entries.map(([name, score], index) => (
           <div
-            key={`${name}-${index}`}
+            key={index}
             style={{ display: "flex", alignItems: "end", gap: 8 }}
           >
             <label style={{ flex: "1 1 180px", fontSize: 12 }}>
@@ -775,7 +788,7 @@ export default function ConfigurationEditor({
     const currentRows = configRows[selectedMenu] ?? [];
     const updatedTables = {
       ...configRows,
-      [selectedMenu]: [...currentRows, newRow],
+      [selectedMenu]: [...currentRows, prepareRowForCommit(selectedMenu, newRow)],
     };
     setEditorAddingRow(true);
     setEditorDraftChecking(true);
@@ -823,7 +836,7 @@ export default function ConfigurationEditor({
     const updatedTables = {
       ...configRows,
       [selectedMenu]: (configRows[selectedMenu] ?? []).map((row, index) =>
-        index === editingRowIndex ? editedRow : row,
+        index === editingRowIndex ? prepareRowForCommit(selectedMenu, editedRow) : row,
       ),
     };
     setEditorDraftChecking(true);

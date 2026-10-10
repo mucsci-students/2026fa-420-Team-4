@@ -65,6 +65,29 @@ const numericFields: Record<string, string[]> = {
   "Class Patterns": ["Credits"],
 };
 
+const structuredFields: Record<string, string[]> = {
+  Rooms: ["Features", "Times"],
+  Labs: ["Features", "Times"],
+  Courses: [
+    "Room",
+    "Lab",
+    "Conflicts",
+    "Faculty",
+    "Alternate Faculty",
+    "Required Room Features",
+    "Required Lab Features",
+  ],
+  Faculty: [
+    "Mandatory Days",
+    "Times",
+    "Course Preferences",
+    "Room Preferences",
+    "Lab Preferences",
+  ],
+  Timeslots: ["Times"],
+  "Class Patterns": ["Meetings"],
+};
+
 const optionalFields: Record<string, string[]> = {
   Rooms: ["Features", "Times"],
   Labs: ["Features", "Times"],
@@ -139,6 +162,7 @@ function parseCellValue(menu: string, column: string, value: string): unknown {
   ) {
     return value === "true";
   }
+  if (!structuredFields[menu]?.includes(column)) return value;
   try {
     return JSON.parse(value);
   } catch {

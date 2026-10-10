@@ -207,6 +207,7 @@ export default function ScheduleGenerator() {
                 </label>{" "}
                 <input
                   id="generation-limit"
+                  disabled={configFile === null}
                   type="number"
                   min={1}
                   value={generationLimit}
@@ -274,6 +275,7 @@ export default function ScheduleGenerator() {
                     {" "}
                     <input
                       type="checkbox"
+                      disabled={configFile === null}
                       checked={optimizerFlags.includes(option.value)}
                       onChange={() => toggleOptimizerFlag(option.value)}
                     />{" "}

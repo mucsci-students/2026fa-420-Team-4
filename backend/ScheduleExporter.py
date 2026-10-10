@@ -97,7 +97,12 @@ def schedules_to_csv(schedules: Sequence[object]) -> str:
     if fieldnames:
         writer.writeheader()
         writer.writerows(
-            {key: _csv_value(value) for key, value in row.items()}
+            {
+                key: "'" + value
+                if isinstance(value, str) and value.startswith(("=", "+", "-", "@", "\t", "\r"))
+                else _csv_value(value)
+                for key, value in row.items()
+            }
             for row in rows
         )
     return output.getvalue()
