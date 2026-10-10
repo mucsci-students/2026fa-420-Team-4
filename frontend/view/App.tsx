@@ -1,6 +1,6 @@
 // frontend/view/App.tsx
 import { useRef, useState } from 'react';
-import { uploadConfig } from './api';
+import axios from 'axios';
 import type { OpenedConfigFile } from './configFileController';
 
 interface AppProps {
@@ -15,10 +15,8 @@ export function App({
   onCreateNew,
 }: AppProps) {
   const fileInput = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>('');
   const [errors, setErrors] = useState<string[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
 
   const handleChooseFile = async (selectedFile: File | undefined) => {
     if (!selectedFile) return;
@@ -27,37 +25,28 @@ export function App({
 
     try {
       const selected = await onChooseFile(selectedFile);
-      setFile(selected.file);
       onConfigSelected(selected.config);
       setStatus(
         `Loaded ${selected.file.name} into the editor. Save Changes downloads the edited configuration with the same filename.`,
       );
     } catch (error) {
       setStatus('Could not open configuration file.');
-      setErrors([
-        error instanceof Error ? error.message : 'Invalid JSON file.',
-      ]);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!file) return;
-    setLoading(true);
-    setErrors([]);
-    setStatus('Uploading configuration...');
-
-    try {
-      const res = await uploadConfig(file);
-      setStatus(res.message || 'Config loaded successfully!');
-    } catch (err: any) {
-      setStatus('Upload failed.');
-      if (err.response?.data?.detail?.errors) {
-        setErrors(err.response.data.detail.errors);
+      if (
+        axios.isAxiosError<{
+          detail?: { errors?: string[] } | string;
+        }>(error)
+      ) {
+        const detail = error.response?.data?.detail;
+        setErrors(
+          typeof detail === 'string'
+            ? [detail]
+            : detail?.errors ?? [error.message],
+        );
       } else {
-        setErrors([err.response?.data?.detail || err.message]);
+        setErrors([
+          error instanceof Error ? error.message : 'Invalid JSON file.',
+        ]);
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -71,7 +60,6 @@ export function App({
           <button
             type="button"
             onClick={() => {
-              setFile(null);
               onCreateNew();
               setStatus('Success: New configuration created. Save Changes downloads it as new-config.json.');
               setErrors([]);
@@ -92,9 +80,6 @@ export function App({
         />
         <button type="button" onClick={() => fileInput.current?.click()}>
           Choose File
-        </button>
-        <button onClick={handleUpload} disabled={!file || loading} style={{ marginLeft: '10px' }}>
-          {loading ? 'Loading...' : 'Load Config'}
         </button>
       </div>
 

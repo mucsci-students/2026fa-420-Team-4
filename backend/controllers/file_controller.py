@@ -33,3 +33,23 @@ async def upload_config(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Invalid JSON format")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Configuration error: {str(e)}")
+
+
+@router.post("/validate")
+async def validate_config(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        data = json.loads(content.decode("utf-8"))
+
+        is_valid, errors = validate_config_dict(data)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail={"errors": errors})
+
+        CombinedConfig.model_validate(data)
+        return {"message": "Configuration validated successfully"}
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Configuration error: {str(e)}")

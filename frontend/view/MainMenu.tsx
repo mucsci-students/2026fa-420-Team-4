@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import axios from "axios";
 import App from "./App";
-import { runGenerator, uploadConfig } from "./api";
+import { runGenerator, uploadConfig, validateConfig } from "./api";
 import {
   applyConfigTableRows,
   asObject,
@@ -608,6 +609,7 @@ const optimizerFlagOptions = [
 ];
 /** Render navigation and panels for configuration, schedule generation, and viewing. */
 export default function MainMenu() {
+  const generationConfigInput = useRef<HTMLInputElement>(null);
   const [activeMenu, setActiveMenu] = useState("Configuration Editor");
   const [configOpen, setConfigOpen] = useState(true);
   const [generationLimit, setGenerationLimit] = useState(DEFAULT_GENERATION_LIMIT);
@@ -633,6 +635,7 @@ export default function MainMenu() {
   const [editorFileName, setEditorFileName] = useState("");
   const [editorDirty, setEditorDirty] = useState(false);
   const [editorSaveStatus, setEditorSaveStatus] = useState("");
+  const [editorSaveFailed, setEditorSaveFailed] = useState(false);
   const [editorSaving, setEditorSaving] = useState(false);
   const [editorFileController] = useState(createConfigFileController);
   const [generationSettingsController] = useState(
@@ -660,21 +663,38 @@ export default function MainMenu() {
   };
   const handleGenerationConfigSelected = async (file: File | undefined) => {
     if (!file) return;
+    setConfigLoading(true);
     setConfigErrors([]);
-    setConfigStatus("Reading configuration...");
+    setConfigStatus("Reading and loading configuration...");
     try {
       const settings = await generationSettingsController.open(file);
+      await uploadConfig(generationSettingsController.toFile());
       setConfigFile(file);
       setGenerationLimit(settings.limit);
       setOptimizerFlags(settings.optimizer_flags);
-      setConfigStatus(`Selected ${file.name}. Settings will be included when loaded.`);
+      setConfigStatus(`${file.name} loaded successfully.`);
     } catch (error) {
       generationSettingsController.clear();
       setConfigFile(null);
-      setConfigStatus("Could not read configuration.");
-      setConfigErrors([
-        error instanceof Error ? error.message : "Invalid JSON configuration.",
-      ]);
+      setConfigStatus("Could not load configuration.");
+      if (
+        axios.isAxiosError<{
+          detail?: { errors?: string[] } | string;
+        }>(error)
+      ) {
+        const detail = error.response?.data?.detail;
+        setConfigErrors(
+          typeof detail === "string"
+            ? [detail]
+            : detail?.errors ?? [error.message],
+        );
+      } else {
+        setConfigErrors([
+          error instanceof Error ? error.message : "Invalid JSON configuration.",
+        ]);
+      }
+    } finally {
+      setConfigLoading(false);
     }
   };
   const handleGenerateSchedule = async () => {
@@ -682,6 +702,9 @@ export default function MainMenu() {
     setGenerationError("");
     setGenerationStatus("Generating schedules...");
     try {
+      if (configFile) {
+        await uploadConfig(generationSettingsController.toFile());
+      }
       const result = await runGenerator();
       setGeneratedScheduleCount(result.count);
       setGenerationStatus(`Generated ${result.count} schedule(s).`);
@@ -708,30 +731,12 @@ export default function MainMenu() {
       setExportingSchedule(false);
     }
   };
-  const handleConfigLoad = async () => {
-    if (!configFile) return;
-
-    setConfigLoading(true);
-    setConfigErrors([]);
-    setConfigStatus("Loading configuration...");
-    try {
-      const response = await uploadConfig(generationSettingsController.toFile());
-      setConfigStatus(response.message || "Config loaded successfully!");
-    } catch (error: any) {
-      setConfigStatus("Config load failed.");
-      setConfigErrors(
-        error.response?.data?.detail?.errors ??
-        [error.response?.data?.detail || error.message]
-      );
-    } finally {
-      setConfigLoading(false);
-    }
-  };
   const handleEditorConfigSelected = (config: unknown) => {
     setOriginalEditorConfig(config);
     setConfigRows(getConfigTableRows(config));
     setEditorDirty(false);
     setEditorSaveStatus("");
+    setEditorSaveFailed(false);
     setEditingRowIndex(null);
     setEditedRow({});
     setAddWindowOpen(false);
@@ -740,6 +745,7 @@ export default function MainMenu() {
   const handleChooseEditorFile = async (
     file: File,
   ): Promise<OpenedConfigFile> => {
+    await validateConfig(file);
     const selected = await editorFileController.open(file);
     setEditorFileName(selected.file.name);
     return selected;
@@ -750,6 +756,7 @@ export default function MainMenu() {
     setConfigRows({});
     setEditorDirty(true);
     setEditorSaveStatus("");
+    setEditorSaveFailed(false);
     setEditingRowIndex(null);
     setEditedRow({});
     setAddWindowOpen(false);
@@ -762,17 +769,40 @@ export default function MainMenu() {
     }
 
     setEditorSaving(true);
-    setEditorSaveStatus("Saving changes...");
+    setEditorSaveStatus("Validating configuration...");
+    setEditorSaveFailed(false);
     try {
       const updatedConfig = applyConfigTableRows(originalEditorConfig, configRows);
+      const configFile = new File(
+        [`${JSON.stringify(updatedConfig, null, 2)}\n`],
+        editorFileName,
+        { type: "application/json" },
+      );
+      await validateConfig(configFile);
       editorFileController.save(updatedConfig);
       setOriginalEditorConfig(updatedConfig);
       setEditorDirty(false);
-      setEditorSaveStatus("");
+      setEditorSaveStatus("Configuration validated and saved successfully.");
+      setEditorSaveFailed(false);
     } catch (error) {
-      setEditorSaveStatus(
-        error instanceof Error ? error.message : "Could not save the configuration file.",
-      );
+      let message =
+        error instanceof Error
+          ? error.message
+          : "Could not validate and save the configuration file.";
+      if (
+        axios.isAxiosError<{
+          detail?: { errors?: string[] } | string;
+        }>(error)
+      ) {
+        const detail = error.response?.data?.detail;
+        if (typeof detail === "string") {
+          message = detail;
+        } else if (detail?.errors) {
+          message = detail.errors.join(" ");
+        }
+      }
+      setEditorSaveStatus(message);
+      setEditorSaveFailed(true);
     } finally {
       setEditorSaving(false);
     }
@@ -1259,7 +1289,14 @@ export default function MainMenu() {
                     </span>
                   )}
                   {editorSaveStatus && (
-                    <p role="status" style={{ margin: "4px 0 0", color: "#475569", fontSize: 13 }}>
+                    <p
+                      role={editorSaveFailed ? "alert" : "status"}
+                      style={{
+                        margin: "4px 0 0",
+                        color: editorSaveFailed ? "#b91c1c" : "#475569",
+                        fontSize: 13,
+                      }}
+                    >
                       {editorSaveStatus}
                     </p>
                   )}
@@ -1321,19 +1358,21 @@ export default function MainMenu() {
                   Load Config to Generate Schedules
                 </h2>
                 <input
+                  ref={generationConfigInput}
                   type="file"
-                  accept=".json"
+                  accept=".json,application/json"
                   onChange={(event) => {
                     void handleGenerationConfigSelected(event.target.files?.[0]);
                     event.currentTarget.value = "";
                   }}
+                  style={{ display: "none" }}
                 />{" "}
                 <button
                   type="button"
-                  onClick={handleConfigLoad}
-                  disabled={!configFile || configLoading}
+                  onClick={() => generationConfigInput.current?.click()}
+                  disabled={configLoading}
                 >
-                  {configLoading ? "Loading..." : "Load Config"}
+                  {configLoading ? "Loading..." : "Choose File"}
                 </button>
                 {configStatus && (
                   <p role="status" style={{ marginTop: 8 }}>
