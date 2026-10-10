@@ -762,6 +762,12 @@ export default function MainMenu() {
               {/* Generate Button */}{" "}
               <button
                 type="button"
+                onClick={() => {
+                  console.log("Generation request:", {
+                    limit: generationLimit,
+                    optimizer_flags: optimizerFlags,
+                  });
+                }}
                 style={{
                   marginTop: 24,
                   padding: "11px 20px",
@@ -773,15 +779,8 @@ export default function MainMenu() {
                   fontWeight: "bold",
                   cursor: "pointer",
                 }}
-                onClick={() => {
-                  console.log("Generation request:", {
-                    limit: generationLimit,
-                    optimizer_flags: optimizerFlags,
-                  });
-                }}
               >
-                {" "}
-                Generate Schedule{" "}
+                Generate Schedule
               </button>{" "}
               {/* Generation Status */}{" "}
               <div
@@ -798,10 +797,25 @@ export default function MainMenu() {
                   Generation Status{" "}
                 </h2>{" "}
                 <p style={{ margin: 0, color: "#64748b" }}>
-                  {" "}
-                  Ready to generate a schedule.{" "}
+                  Ready to generate a schedule.
                 </p>{" "}
               </div>{" "}
+              <button
+                type="button"
+                style={{
+                  marginTop: 20,
+                  padding: "11px 20px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: "#334155",
+                  color: "#f8fafc",
+                  fontSize: 14,
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                Export Schedule
+              </button>{" "}
             </section>
           )}{" "}
           {/* Schedule Viewer */}{" "}
