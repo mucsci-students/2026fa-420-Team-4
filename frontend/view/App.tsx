@@ -1,13 +1,11 @@
 // frontend/view/App.tsx
 import React, { useState } from 'react';
-import { uploadConfig, runGenerator } from './api';
-import type { GeneratedSchedule } from './api';
+import { uploadConfig } from './api';
 
 export function App() {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>('');
   const [errors, setErrors] = useState<string[]>([]);
-  const [schedules, setSchedules] = useState<GeneratedSchedule[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,43 +35,30 @@ export function App() {
     }
   };
 
-  const handleGenerate = async () => {
-    setLoading(true);
-    setStatus('Generating schedules...');
-    try {
-      const res = await runGenerator();
-      setSchedules(res.schedules || []);
-      setStatus(`Generated ${res.count} schedule(s) successfully!`);
-    } catch (err: any) {
-      setStatus('Schedule generation failed.');
-      setErrors([err.response?.data?.detail || err.message]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div style={{ maxWidth: '800px', margin: '40px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
-      <h1>Scheduler Control Dashboard</h1>
+      <h1>Configuration Editor</h1>
 
-      {/* Upload Section */}
       <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-        <h2>1. Upload Configuration JSON</h2>
+        <h2>Create New Config or Load Existing</h2>
+        <div style={{ marginBottom: '10px' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setFile(null);
+              setStatus('New blank configuration started.');
+              setErrors([]);
+            }}
+          >
+            Create New Config
+          </button>
+        </div>
         <input type="file" accept=".json" onChange={handleFileChange} />
         <button onClick={handleUpload} disabled={!file || loading} style={{ marginLeft: '10px' }}>
-          Upload Config
+          {loading ? 'Loading...' : 'Load Config'}
         </button>
       </div>
 
-      {/* Generator Section */}
-      <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-        <h2>2. Run Scheduler Engine</h2>
-        <button onClick={handleGenerate} disabled={loading}>
-          {loading ? 'Processing...' : 'Generate Schedules'}
-        </button>
-      </div>
-
-      {/* Status & Diagnostics */}
       {status && <p><strong>Status:</strong> {status}</p>}
       {errors.length > 0 && (
         <div style={{ background: '#ffe6e6', color: '#900', padding: '10px', borderRadius: '4px' }}>
@@ -83,23 +68,6 @@ export function App() {
               <li key={idx}>{err}</li>
             ))}
           </ul>
-        </div>
-      )}
-
-      {/* Results Rendering */}
-      {schedules.length > 0 && (
-        <div>
-          <h2>Generated Output ({schedules.length})</h2>
-          {schedules.map((sched) => (
-            <div key={sched.schedule_id} style={{ border: '1px solid #eee', margin: '10px 0', padding: '10px' }}>
-              <h3>Schedule #{sched.schedule_id}</h3>
-              <ul>
-                {sched.courses.map((courseCsv, idx) => (
-                  <li key={idx}><code>{courseCsv}</code></li>
-                ))}
-              </ul>
-            </div>
-          ))}
         </div>
       )}
     </div>
