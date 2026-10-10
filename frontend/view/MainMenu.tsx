@@ -12,6 +12,10 @@ import {
   createConfigFileController,
   type OpenedConfigFile,
 } from "./configFileController";
+import {
+  createGenerationSettingsController,
+  DEFAULT_GENERATION_LIMIT,
+} from "./generationSettingsController";
 import { exportScheduleCsvFile } from "./scheduleExportController";
 const configMenus = [
   "Rooms",
@@ -606,7 +610,7 @@ const optimizerFlagOptions = [
 export default function MainMenu() {
   const [activeMenu, setActiveMenu] = useState("Configuration Editor");
   const [configOpen, setConfigOpen] = useState(true);
-  const [generationLimit, setGenerationLimit] = useState(10);
+  const [generationLimit, setGenerationLimit] = useState(DEFAULT_GENERATION_LIMIT);
   const [optimizerFlags, setOptimizerFlags] = useState<string[]>([]);
   const [generatedScheduleCount, setGeneratedScheduleCount] = useState(0);
   const [generationStatus, setGenerationStatus] = useState("Ready to generate a schedule.");
@@ -631,6 +635,9 @@ export default function MainMenu() {
   const [editorSaveStatus, setEditorSaveStatus] = useState("");
   const [editorSaving, setEditorSaving] = useState(false);
   const [editorFileController] = useState(createConfigFileController);
+  const [generationSettingsController] = useState(
+    createGenerationSettingsController,
+  );
   const buttonStyle = (active: boolean) => ({
     width: "100%",
     padding: "10px 12px",
@@ -643,11 +650,32 @@ export default function MainMenu() {
     cursor: "pointer",
   });
   const toggleOptimizerFlag = (flag: string) => {
-    setOptimizerFlags((current) =>
-      current.includes(flag)
-        ? current.filter((currentFlag) => currentFlag !== flag)
-        : [...current, flag]
-    );
+    const updatedFlags = optimizerFlags.includes(flag)
+      ? optimizerFlags.filter((currentFlag) => currentFlag !== flag)
+      : [...optimizerFlags, flag];
+    setOptimizerFlags(updatedFlags);
+    if (configFile) {
+      generationSettingsController.setOptimizerFlags(updatedFlags);
+    }
+  };
+  const handleGenerationConfigSelected = async (file: File | undefined) => {
+    if (!file) return;
+    setConfigErrors([]);
+    setConfigStatus("Reading configuration...");
+    try {
+      const settings = await generationSettingsController.open(file);
+      setConfigFile(file);
+      setGenerationLimit(settings.limit);
+      setOptimizerFlags(settings.optimizer_flags);
+      setConfigStatus(`Selected ${file.name}. Settings will be included when loaded.`);
+    } catch (error) {
+      generationSettingsController.clear();
+      setConfigFile(null);
+      setConfigStatus("Could not read configuration.");
+      setConfigErrors([
+        error instanceof Error ? error.message : "Invalid JSON configuration.",
+      ]);
+    }
   };
   const handleGenerateSchedule = async () => {
     setGeneratingSchedules(true);
@@ -687,7 +715,7 @@ export default function MainMenu() {
     setConfigErrors([]);
     setConfigStatus("Loading configuration...");
     try {
-      const response = await uploadConfig(configFile);
+      const response = await uploadConfig(generationSettingsController.toFile());
       setConfigStatus(response.message || "Config loaded successfully!");
     } catch (error: any) {
       setConfigStatus("Config load failed.");
@@ -1296,9 +1324,10 @@ export default function MainMenu() {
                 <input
                   type="file"
                   accept=".json"
-                  onChange={(event) =>
-                    setConfigFile(event.target.files?.[0] ?? null)
-                  }
+                  onChange={(event) => {
+                    void handleGenerationConfigSelected(event.target.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
                 />{" "}
                 <button
                   type="button"
@@ -1353,8 +1382,11 @@ export default function MainMenu() {
                   value={generationLimit}
                   onChange={(event) => {
                     const value = Number(event.target.value);
-                    if (value >= 1) {
+                    if (Number.isSafeInteger(value) && value >= 1) {
                       setGenerationLimit(value);
+                      if (configFile) {
+                        generationSettingsController.setLimit(value);
+                      }
                     }
                   }}
                   style={{
