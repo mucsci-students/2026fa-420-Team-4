@@ -149,6 +149,9 @@ def course_add(shell, filename):
             default=None,
         )
 
+#   Jacob 10/7/26
+#   course config vars to save.... 
+#   My code would interject somewhere here, 
         course = {
             "course_id": course_id,
             "section_id": section_id,
