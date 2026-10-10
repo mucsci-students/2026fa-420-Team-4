@@ -482,11 +482,6 @@ export default function MainMenu() {
                   <button
                     type="button"
                     onClick={() => {
-                      const errors = validateRow(activeMenu, editedRow);
-                      if (Object.keys(errors).length > 0) {
-                        window.alert(Object.values(errors).join("\n"));
-                        return;
-                      }
                       setConfigRows((current) => ({
                         ...current,
                         [activeMenu]: (current[activeMenu] ?? []).map((row, index) =>
@@ -506,11 +501,6 @@ export default function MainMenu() {
                 <form
                   onSubmit={(event) => {
                     event.preventDefault();
-                    const errors = validateRow(activeMenu, newRow);
-                    if (Object.keys(errors).length > 0) {
-                      window.alert(Object.values(errors).join("\n"));
-                      return;
-                    }
                     const rows = configRows[activeMenu] ?? [];
                     const newRowIndex = rows.length;
                     setConfigRows((current) => ({
@@ -827,35 +817,4 @@ export default function MainMenu() {
       </div>{" "}
     </div>
   );
-}
-
-type ConfigRow = Record<string, string>;
-type RowErrors = Record<string, string>;
-
-type ColumnValidator = (value: string, row: ConfigRow) => string | undefined;
-
-const validators: Record<string, Record<string, ColumnValidator>> = {
-  Rooms: {
-    Name: (value) => value.trim() ? undefined : "Name is required",
-    Capacity: (value) =>
-      /^\d+$/.test(value) && Number(value) > 0
-        ? undefined
-        : "Capacity must be a positive whole number",
-    Features: () => undefined,      // Replace with the rule you want
-    Availability: () => undefined,  // Replace with the rule you want
-  },
-  // Add an entry for every column in Labs, Courses, Faculty, etc.
-};
-
-function validateRow(menu: string, row: ConfigRow): RowErrors {
-  const errors: RowErrors = {};
-
-  for (const column of configTableColumns[menu]) {
-    const validate = validators[menu]?.[column];
-    const error = validate?.(row[column] ?? "", row);
-
-    if (error) errors[column] = error;
-  }
-
-  return errors;
 }
