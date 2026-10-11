@@ -671,6 +671,17 @@ export default function ConfigurationEditor({
   } | null>(null);
   const [editorFileController] = useState(createConfigFileController);
   const validationRequestId = useRef(0);
+
+  useEffect(() => {
+    if (!editorDirty) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [editorDirty]);
+
   /** Update the local save status and publish nonempty messages to the shared status bar. */
   const setEditorSaveStatus = (message: string) => {
     setEditorSaveStatusState(message);
@@ -895,6 +906,7 @@ export default function ConfigurationEditor({
             onConfigSelected={handleEditorConfigSelected}
             onChooseFile={handleChooseEditorFile}
             onCreateNew={handleCreateNewConfig}
+            hasUnsavedChanges={editorDirty}
             onStatusChange={onStatusChange}
           />{" "}
         </div>

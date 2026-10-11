@@ -384,6 +384,13 @@ export default function ScheduleViewer({
 
   /** Clear stored schedules and viewer selection, reporting any request failure. */
   const handleClear = async () => {
+    if (
+      !window.confirm(
+        `Clear all ${schedules.length} available schedule(s)? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
     setActionInProgress(true);
     setError("");
     try {

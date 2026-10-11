@@ -8,6 +8,7 @@ interface AppProps {
   onConfigSelected: (config: unknown) => void;
   onChooseFile: (file: File) => Promise<OpenedConfigFile>;
   onCreateNew: () => void;
+  hasUnsavedChanges: boolean;
   onStatusChange: (message: string) => void;
 }
 
@@ -16,6 +17,7 @@ export function App({
   onConfigSelected,
   onChooseFile,
   onCreateNew,
+  hasUnsavedChanges,
   onStatusChange,
 }: AppProps) {
   const fileInput = useRef<HTMLInputElement>(null);
@@ -25,6 +27,14 @@ export function App({
   /** Open a selected configuration and report loading results; ignore an empty selection. */
   const handleChooseFile = async (selectedFile: File | undefined) => {
     if (!selectedFile) return;
+    if (
+      hasUnsavedChanges &&
+      !window.confirm(
+        "Discard unsaved configuration changes and load another file?",
+      )
+    ) {
+      return;
+    }
     setErrors([]);
     setStatus('Loading configuration file...');
     onStatusChange('Loading configuration file...');
@@ -68,6 +78,14 @@ export function App({
           <button
             type="button"
             onClick={() => {
+              if (
+                hasUnsavedChanges &&
+                !window.confirm(
+                  "Discard unsaved configuration changes and create a new configuration?",
+                )
+              ) {
+                return;
+              }
               onCreateNew();
               setStatus('Success: New configuration created. Save Changes downloads it as new-config.json.');
               onStatusChange('New configuration created.');

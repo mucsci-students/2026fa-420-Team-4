@@ -36,6 +36,7 @@ export default function ScheduleGenerator({
   const [generationLimitInput, setGenerationLimitInput] = useState(
     String(DEFAULT_GENERATION_LIMIT),
   );
+  const [generationLimitError, setGenerationLimitError] = useState("");
   const [optimizerFlags, setOptimizerFlags] = useState<string[]>([]);
   const [generatedScheduleCount, setGeneratedScheduleCount] = useState(0);
   const [generationStatus, setGenerationStatus] = useState(
@@ -71,6 +72,7 @@ export default function ScheduleGenerator({
   const handleGenerationConfigSelected = async (file: File | undefined) => {
     if (!file) return;
     setConfigLoading(true);
+    setGenerationLimitError("");
     setConfigErrors([]);
     setConfigStatus("Reading and loading configuration...");
     onStatusChange("Reading and loading configuration...");
@@ -111,6 +113,15 @@ export default function ScheduleGenerator({
 
   /** Generate with the current overrides while polling for schedule-count progress. */
   const handleGenerateSchedule = async () => {
+    if (configFile === null || generationLimitError !== "") return;
+    if (
+      generationLimit === 0 &&
+      !window.confirm(
+        "A generation limit of 0 clears all available schedules. Continue?",
+      )
+    ) {
+      return;
+    }
     setGeneratingSchedules(true);
     setGenerationError("");
     setGenerationStatus("Generating schedules...");
@@ -278,19 +289,32 @@ export default function ScheduleGenerator({
           min={0}
           step={1}
           value={generationLimitInput}
+          aria-invalid={generationLimitError !== ""}
+          aria-describedby={
+            generationLimitError ? "generation-limit-error" : undefined
+          }
           onChange={(event) => {
             const input = event.target.value;
             setGenerationLimitInput(input);
-            if (/^\d+$/.test(input)) {
-              const value = Number(input);
-              if (!Number.isSafeInteger(value)) return;
-              setGenerationLimit(value);
-              if (configFile) {
-                generationSettingsController.setLimit(value);
-              }
+            if (!/^\d+$/.test(input)) {
+              setGenerationLimitError(
+                "Enter a non-negative whole number of schedules.",
+              );
+              return;
+            }
+            const value = Number(input);
+            if (!Number.isSafeInteger(value)) {
+              setGenerationLimitError(
+                "Enter a whole number within the supported range.",
+              );
+              return;
+            }
+            setGenerationLimitError("");
+            setGenerationLimit(value);
+            if (configFile) {
+              generationSettingsController.setLimit(value);
             }
           }}
-          onBlur={() => setGenerationLimitInput(String(generationLimit))}
           style={{
             width: 200,
             padding: "8px 10px",
@@ -304,6 +328,15 @@ export default function ScheduleGenerator({
           Number of schedules the generator should produce. Enter 0 to clear
           generated schedules without generating any.
         </p>
+        {generationLimitError && (
+          <p
+            id="generation-limit-error"
+            role="alert"
+            style={{ marginBottom: 0, color: "#b91c1c" }}
+          >
+            {generationLimitError}
+          </p>
+        )}
       </div>
 
       <div
@@ -354,7 +387,11 @@ export default function ScheduleGenerator({
       <button
         type="button"
         onClick={() => void handleGenerateSchedule()}
-        disabled={generatingSchedules}
+        disabled={
+          generatingSchedules ||
+          configFile === null ||
+          generationLimitError !== ""
+        }
         style={{
           marginTop: 24,
           padding: "11px 20px",

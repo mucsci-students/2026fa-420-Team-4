@@ -77,16 +77,35 @@ in an MVC-style structure:
 
 ## Using the three modes
 
-The left menu switches from **Configuration Editor**,
+The left menu switches among **Configuration Editor**,
 **Schedule Generator**, and **Schedule Viewer**. The Configuration Editor can
 also expand to show its data sections: Rooms, Labs, Courses, Faculty, Timeslots,
 and Class Patterns.
 
-**Representative workflow:** Create or load a configuration in the Configuration
-Editor, edit it, validate and save it; load that JSON in Schedule Generator, 
-choose a limit and optimizer preferences, and generate schedules; then open 
-Schedule Viewer to navigate the available schedules, switch between room/lab and 
-faculty groupings, or load and export.
+### Screen-by-screen walkthrough
+
+1. **Configuration Editor:** The left sidebar highlights the editor and lists
+   its configuration sections. In the main pane, choose **Create New Config**
+   or **Choose File**. After loading a valid JSON file, choose Rooms, Labs,
+   Courses, Faculty, Timeslots, or Class Patterns in the sidebar; edit a row,
+   add a row, or delete one. Applied edits remain a draft until **Save Changes**.
+   Draft validation results appear above the save controls. If you try to load
+   another file or create a new configuration with unsaved edits, confirm that
+   you want to discard them; cancel to keep the current draft.
+2. **Schedule Generator:** Select the sidebar's **Schedule Generator** mode.
+   Its main pane presents the configuration file chooser, generation limit,
+   optimizer checkboxes, **Generate Schedules**, and Generation Status. Load
+   the configuration saved in step 1, choose the limit and optional optimizer
+   preferences, then generate. The progress bar and schedule count update while
+   work is in progress. Choose JSON or CSV before exporting. An invalid limit
+   displays an inline error and disables generation; a limit of `0` asks for
+   confirmation before clearing schedules.
+3. **Schedule Viewer:** Select **Schedule Viewer** in the sidebar. Load schedule
+   JSON if schedules are not already available. The top controls show the
+   schedule count, file loading, selected/all JSON export, and clear action.
+   Use the schedule selector or **Previous**/**Next**; below it, switch between
+   **View by Room / Lab** and **View by Faculty**. **Clear Schedules** requires
+   confirmation before removing the available collection.
 
 ### Configuration Editor
 
@@ -97,19 +116,27 @@ faculty groupings, or load and export.
 3. Draft validation runs as edits are applied. Review displayed validation
    errors, correct them, and select **Save Changes**. Saving validates again;
    only a valid configuration can be downloaded.
+   Invalid configuration or draft data is shown in an error panel, and saving
+   is blocked until it passes validation.
 4. Deleting a row requires confirmation. Deletion does not automatically update
    other items that refer to it. If a deletion leaves invalid references,
    validation reports the issue and saving does not download the invalid
    configuration; edit those references or restore the deleted item.
 
+Loading another file, creating a new configuration, or leaving/reloading the
+page with unsaved edits triggers a confirmation. Choosing to keep editing
+preserves the draft.
 
 ### Schedule Generator
 
 1. Open **Schedule Generator**, choose a valid configuration JSON file, and
    review its load/validation status.
 2. Set **Maximum schedules to generate** and choose any optimizer preferences
-   The limit and flags are generation overrides for
-   the loaded configuration.
+   (Faculty → Course, Faculty → Room, Faculty → Lab, Same Room, Same Lab,
+   Pack Rooms, or Pack Labs). The limit must be a non-negative whole number
+   within the safe integer range. Invalid values show an inline error and
+   disable generation. A limit of `0` asks for confirmation before clearing
+   schedules.
 3. Select **Generate Schedules**. The status area reports the result or error.
    Choose JSON or CSV in **Export format**, then select **Export Generated
    Schedules** to download the generated collection.
@@ -126,10 +153,19 @@ faculty groupings, or load and export.
    `<originalfilename>_schedule<number>.json` and
    `<originalfilename>_allschedules.json`. The browser saves downloads to its
    configured location and handles repeated filenames according to its download
-   settings.
-   **Clear Schedules** removes the available collection.
+   settings. **Clear Schedules** asks for confirmation before removing the
+   available collection.
 
 The Generator offers JSON and CSV exports; the Viewer exports JSON.
+
+### Unsaved drafts and destructive actions
+
+Unsaved configuration edits are held in the editor until saved. Replacing the
+configuration by loading a file or starting a new one, and leaving or reloading
+the page, requires confirmation before discarding those edits. Deleting a
+configuration row, clearing schedules in the Viewer, and using generation limit
+`0` to clear schedules also require confirmation. Canceling any confirmation
+leaves the current data unchanged.
 
 ## Schedule JSON format
 
@@ -154,4 +190,3 @@ example:
   }
 ]
 ```
-
