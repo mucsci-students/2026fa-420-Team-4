@@ -6,7 +6,7 @@ and Vite**; the API uses **FastAPI** and the MUCSCI Scheduler library.
 
 ## Requirements and installation
 
-Install Python 3.12 or newer, [uv](https://docs.astral.sh/uv/), Node.js
+Install Python 3.12 or newer, uv, Node.js
 20.19+ (or 22.12+) and npm. From the repository root:
 
 ```bash
@@ -74,16 +74,13 @@ in an MVC-style structure:
 - `frontend/view/api.ts` is the frontend API client. Python tests are in
   `tests/`.
 
-This is an MVC-style separation rather than a strict server-rendered MVC
-framework.
 
 ## Using the three modes
 
-The left navigation switches among **Configuration Editor**,
+The left menu switches among **Configuration Editor**,
 **Schedule Generator**, and **Schedule Viewer**. The Configuration Editor can
 also expand to show its data sections: Rooms, Labs, Courses, Faculty, Timeslots,
-and Class Patterns. The shared status bar and inline alerts report operations
-and errors.
+and Class Patterns.
 
 **Representative workflow:** Create or load a configuration in the Configuration
 Editor, add or edit its course and resource rows, validate and save it; load that
@@ -100,8 +97,7 @@ schedule JSON.
    rows in the appropriate section; changes remain a local draft.
 3. Draft validation runs as edits are committed. Review displayed validation
    errors, correct them, and select **Save Changes**. Saving validates again;
-   only a valid configuration is downloaded as JSON using the current filename.
-   A new configuration downloads as `new-config.json`.
+   only a valid configuration is downloaded.
 4. Deleting a row requires confirmation. Deletion does not automatically update
    other items that refer to it. If a deletion leaves invalid references,
    validation reports the issue and saving does not download the invalid
@@ -115,11 +111,9 @@ the draft before replacing it.
 
 1. Open **Schedule Generator**, choose a valid configuration JSON file, and
    review its load/validation status.
-2. Set **Maximum schedules to generate** and choose any optimizer preferences:
-   Faculty → Course, Faculty → Room, Faculty → Lab, Same Room, Same Lab,
-   Pack Rooms, or Pack Labs. The limit and flags are generation overrides for
-   the loaded configuration; the limit defaults to 10. Entering `0` clears the
-   generated schedule collection instead of generating schedules.
+2. Set **Maximum schedules to generate** and choose any optimizer preferences
+   The limit and flags are generation overrides for
+   the loaded configuration.
 3. Select **Generate Schedules**. The status area reports the result or error.
    Choose JSON or CSV in **Export format**, then select **Export Generated
    Schedules** to download the generated collection.
@@ -127,24 +121,19 @@ the draft before replacing it.
 ### Schedule Viewer
 
 1. Open **Schedule Viewer** to load available schedules, or select **Load JSON
-   Schedules** to import a schedule file. Import replaces the currently
-   available schedule collection.
+   Schedules** to import a schedule file.
 2. Use the schedule selector and **Previous**/**Next** buttons to navigate
    schedules. Choose **View by Room / Lab** or **View by Faculty** to regroup
    the displayed meetings.
 3. **Export Selected JSON** downloads the current schedule;
-   **Export All JSON** downloads the complete available collection. The viewer
-   reports the filename and uses unique timestamped names to avoid overwriting
-   earlier exports. Downloads go to the browser's configured downloads
-   location. **Clear Schedules** removes the available collection.
+   **Export All JSON** downloads all of the schedules. 
+   **Clear Schedules** removes the available collection.
 
-The Generator offers JSON and CSV exports; the Viewer exports JSON. CSV is a
-spreadsheet-oriented export and does not preserve all nested schedule structure.
+The Generator offers JSON and CSV exports; the Viewer exports JSON.
 
 ## Schedule JSON format
 
-The canonical format is a UTF-8 JSON array. A schedule object has a
-`schedule_id` and a `courses` (or `assignments`) array. Assignments identify a
+A schedule object has a `schedule_id` and a `courses` (or `assignments`) array. Assignments identify a
 course with `course`, `course_str`, `course_id`, or `section`, and contain a
 non-empty `times` (or `meetings`) array. Each meeting has a non-empty `day`, a
 `start`/`start_time` value (minutes after midnight or an `HH:MM` string), and a
@@ -166,17 +155,4 @@ positive integer `duration` in minutes. For example:
 ]
 ```
 
-The importer also accepts the legacy array-of-assignment schedules and
-five-column CSV-string assignments. Exported JSON retains the schedule objects
-so it can be loaded into the Schedule Viewer later.
 
-## Known limitations
-
-- Configuration and schedules are held in the backend's in-memory store; they
-  are not persisted across backend restarts.
-- The browser controls the download location; the app does not provide a
-  destination picker. The Viewer uses unique filenames for exports.
-- The Viewer accepts JSON schedule files only. CSV is available from the
-  Generator, but is not a round-trip schedule import format.
-- The editor has no unsaved-draft recovery or discard confirmation when a draft
-  is replaced.
