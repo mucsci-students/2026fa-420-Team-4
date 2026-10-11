@@ -223,7 +223,7 @@ function assignmentMeetings(value: unknown): DisplayMeeting[] {
   return meetings.map((meeting, index) => {
     const record = isRecord(meeting) ? meeting : {};
     const isLabMeeting =
-      labIndex === index || record.lab === true || (!room && lab !== "Not assigned");
+      labIndex === index || record.lab === true || (room === "Not assigned" && lab !== "Not assigned");
     const resource = isLabMeeting ? lab : room;
     const additionalResource =
       isLabMeeting &&
@@ -304,11 +304,12 @@ export default function ScheduleViewer({
   useEffect(() => {
     if (!isActive) return;
     let active = true;
+    setLoading(true);
     void controller.load()
       .then((result) => {
         if (!active) return;
         setSchedules(result.schedules);
-        setSelectedIndex(0);
+        setSelectedIndex((index) => index < result.schedules.length ? index : 0);
         setError("");
       })
       .catch((loadError: unknown) => {
