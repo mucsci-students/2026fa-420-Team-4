@@ -125,3 +125,14 @@ def test_run_generator_returns_schedules_for_loaded_config():
     assert len(result["schedules"]) == result["count"]
     assert result["schedules"][0]["schedule_id"] == 1
     assert "courses" in result["schedules"][0]
+
+
+def test_get_generator_progress_reports_running_state():
+    # Verifies the progress endpoint exposes the latest generation state.
+    store.reset()
+    store.generation_progess = 3
+    store.generation_running = True
+
+    result = generator_controller.get_generator_progress()
+
+    assert result == {"count": 3, "running": True}
