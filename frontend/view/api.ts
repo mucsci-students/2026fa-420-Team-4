@@ -107,3 +107,11 @@ export const exportSchedule = async (format: ScheduleExportFormat) => {
 
   return { blob: response.data as Blob, filename };
 };
+
+export const getGeneratorProgress = async (): Promise<{
+  count: number;
+  running: boolean;
+}> => {
+  const response = await api.get('/generator/progress');
+  return response.data;
+};
