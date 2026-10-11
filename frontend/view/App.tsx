@@ -57,12 +57,12 @@ export function App({
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '40px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
+    <div className="config-start-screen">
       <h1>Configuration Editor</h1>
 
-      <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+      <div className="config-start-card">
         <h2>Create New Config or Load Existing</h2>
-        <div style={{ marginBottom: '10px' }}>
+        <div className="config-start-actions">
           <button
             type="button"
             onClick={() => {
@@ -74,20 +74,20 @@ export function App({
           >
             Create New Config
           </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            onChange={(event) => {
+              void handleChooseFile(event.target.files?.[0]);
+              event.currentTarget.value = '';
+            }}
+            style={{ display: 'none' }}
+          />
+          <button type="button" onClick={() => fileInput.current?.click()}>
+            Choose File
+          </button>
         </div>
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".json,application/json"
-          onChange={(event) => {
-            void handleChooseFile(event.target.files?.[0]);
-            event.currentTarget.value = '';
-          }}
-          style={{ display: 'none' }}
-        />
-        <button type="button" onClick={() => fileInput.current?.click()}>
-          Choose File
-        </button>
       </div>
 
       {status && (

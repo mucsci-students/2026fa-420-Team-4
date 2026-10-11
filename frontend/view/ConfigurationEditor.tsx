@@ -52,12 +52,12 @@ function formatTimeBlocks(value: unknown): string {
     .map(([day, blocks]) => {
       const summaries = Array.isArray(blocks)
         ? blocks.map((blockValue) => {
-            const block = asObject(blockValue);
-            const range = `${String(block.start ?? "")}–${String(block.end ?? "")}`;
-            return block.spacing
-              ? `${range} (every ${String(block.spacing)} min)`
-              : range;
-          })
+          const block = asObject(blockValue);
+          const range = `${String(block.start ?? "")}–${String(block.end ?? "")}`;
+          return block.spacing
+            ? `${range} (every ${String(block.spacing)} min)`
+            : range;
+        })
         : [];
       return `${day}: ${summaries.join(", ") || "unavailable"}`;
     })
@@ -126,9 +126,9 @@ function prepareRowForCommit(menu: string, row: ConfigTableRow): ConfigTableRow 
     column,
     preferenceColumns.includes(column) && value !== ""
       ? JSON.stringify(Object.fromEntries(
-          Object.entries(asObject(parseEditorJson(value, {})))
-            .filter(([name]) => name.trim() !== ""),
-        ))
+        Object.entries(asObject(parseEditorJson(value, {})))
+          .filter(([name]) => name.trim() !== ""),
+      ))
       : value,
   ]));
 }
@@ -137,7 +137,7 @@ const listFields: Record<string, string[]> = {
   Rooms: ["Features"],
   Labs: ["Features"],
   Courses: [
-    "Room",
+    "Room(s)",
     "Lab",
     "Conflicts",
     "Faculty",
@@ -232,7 +232,7 @@ function ConfigFieldEditor({
       onChange(JSON.stringify(Object.fromEntries(nextEntries)));
     };
 
-     return (
+    return (
       <div style={{ ...structuredEditorStyle, maxHeight: "24vh" }}>
         {entries.map(([name, score], index) => (
           <div
@@ -637,29 +637,29 @@ export default function ConfigurationEditor({
 }: ConfigurationEditorProps) {
   const [previousSelectedMenu, setPreviousSelectedMenu] =
     useState(selectedMenu);
-   const [addWindowOpen, setAddWindowOpen] = useState(false);
-    const [newRow, setNewRow] = useState<Record<string, string>>({});
-    const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
-    const [editedRow, setEditedRow] = useState<Record<string, string>>({});
-    const [configRows, setConfigRows] = useState<
+  const [addWindowOpen, setAddWindowOpen] = useState(false);
+  const [newRow, setNewRow] = useState<Record<string, string>>({});
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
+  const [editedRow, setEditedRow] = useState<Record<string, string>>({});
+  const [configRows, setConfigRows] = useState<
     Record<string, ConfigTableRow[]>
   >({});
-    const [originalEditorConfig, setOriginalEditorConfig] = useState<unknown>(null);
-    const [editorFileName, setEditorFileName] = useState("");
-    const [editorDirty, setEditorDirty] = useState(false);
-    const [editorSaveStatus, setEditorSaveStatusState] = useState("");
-    const [editorSaveFailed, setEditorSaveFailed] = useState(false);
-    const [editorSaving, setEditorSaving] = useState(false);
-    const [editorDraftStatus, setEditorDraftStatusState] = useState("");
-    const [editorDraftErrors, setEditorDraftErrors] = useState<string[]>([]);
-    const [editorDraftChecking, setEditorDraftChecking] = useState(false);
-    const [editorDraftValid, setEditorDraftValid] = useState(false);
-    const [editorAddingRow, setEditorAddingRow] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<{
-      menu: string;
-      rowIndex: number;
-    } | null>(null);
-    const [editorFileController] = useState(createConfigFileController);
+  const [originalEditorConfig, setOriginalEditorConfig] = useState<unknown>(null);
+  const [editorFileName, setEditorFileName] = useState("");
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [editorSaveStatus, setEditorSaveStatusState] = useState("");
+  const [editorSaveFailed, setEditorSaveFailed] = useState(false);
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [editorDraftStatus, setEditorDraftStatusState] = useState("");
+  const [editorDraftErrors, setEditorDraftErrors] = useState<string[]>([]);
+  const [editorDraftChecking, setEditorDraftChecking] = useState(false);
+  const [editorDraftValid, setEditorDraftValid] = useState(false);
+  const [editorAddingRow, setEditorAddingRow] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    menu: string;
+    rowIndex: number;
+  } | null>(null);
+  const [editorFileController] = useState(createConfigFileController);
   const setEditorSaveStatus = (message: string) => {
     setEditorSaveStatusState(message);
     if (message) onStatusChange(message);
@@ -684,7 +684,7 @@ export default function ConfigurationEditor({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [deleteTarget]);
- const handleEditorConfigSelected = (config: unknown) => {
+  const handleEditorConfigSelected = (config: unknown) => {
     setOriginalEditorConfig(config);
     setConfigRows(getConfigTableRows(config));
     setEditorDirty(false);
@@ -983,519 +983,518 @@ export default function ConfigurationEditor({
     }
   };
   return (
-    <div style={{ height: "100%", minHeight: 0, overflow: "hidden" }}>
+    <div style={{ width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
       {/* Configuration Editor */}{" "}
-          {selectedMenu === "Configuration Editor" && (
+      {selectedMenu === "Configuration Editor" && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            minHeight: 0,
+            overflow: "hidden",
+            background: "white",
+            border: "1px solid #cbd5e1",
+            borderRadius: 8,
+            padding: 16,
+            boxSizing: "border-box",
+          }}
+        >
+          <App
+            onConfigSelected={handleEditorConfigSelected}
+            onChooseFile={handleChooseEditorFile}
+            onCreateNew={handleCreateNewConfig}
+            onStatusChange={onStatusChange}
+          />{" "}
+        </div>
+      )}{" "}
+      {/* Configuration Sections */}{" "}
+      {configMenus.includes(selectedMenu) && (
+        <section
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            minHeight: 0,
+            overflow: "hidden",
+            background: "white",
+            border: "1px solid #cbd5e1",
+            borderRadius: 8,
+            padding: 24,
+            boxSizing: "border-box",
+          }}
+        >
+          {" "}
+          <h1 style={{ marginTop: 0, fontSize: 28 }}>{selectedMenu}</h1>{" "}
+          <p style={{ color: "#64748b" }}>
+            {" "}
+          </p>{" "}
+          {/* Render read-only rows from the selected submenu schema. */}
+          <div style={{ flex: 1, minHeight: 0, overflow: "auto", width: "100%" }}>
+            <table
+              style={{
+                width: "100%",
+                minWidth: 900,
+                tableLayout: "fixed",
+                borderCollapse: "collapse",
+                textAlign: "left",
+              }}
+            >
+              <colgroup>
+                <col style={{ width: 76 }} />
+                {configTableColumns[selectedMenu].map((column) => (
+                  <col
+                    key={column}
+                    style={{ width: Math.max(160, column.length * 12 + 40) }}
+                  />
+                ))}
+                <col style={{ width: 170 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    style={{
+                      padding: 10,
+                      borderBottom: "2px solid #cbd5e1",
+                      borderRight: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      textAlign: "center",
+                    }}
+                  >
+                    #
+                  </th>
+                  {configTableColumns[selectedMenu].map((column) => (
+                    <th
+                      key={column}
+                      scope="col"
+                      style={{
+                        padding: 10,
+                        borderBottom: "2px solid #cbd5e1",
+                        borderRight: "1px solid #e2e8f0",
+                        background: "#f8fafc",
+                        textAlign: "center",
+                      }}
+                    >
+                      {column}
+                    </th>
+                  ))}
+                  <th
+                    scope="col"
+                    style={{
+                      padding: 10,
+                      borderBottom: "2px solid #cbd5e1",
+                      borderLeft: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      textAlign: "center",
+                    }}
+                  >
+                    Actions
+                  </th>
+
+                </tr>
+              </thead>
+              <tbody>
+                {(configRows[selectedMenu] ?? []).map((row, rowIndex) => (
+                  <tr key={`${selectedMenu}-${rowIndex}`} style={{ height: 48 }}>
+                    <td
+                      style={{
+                        height: 48,
+                        padding: 8,
+                        borderBottom: "1px solid #e2e8f0",
+                        textAlign: "center",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {rowIndex + 1}
+                    </td>
+                    {configTableColumns[selectedMenu].map((column) => (
+                      <td
+                        key={column}
+                        style={{
+                          height: 48,
+                          padding: 8,
+                          borderBottom: "1px solid #e2e8f0",
+                          overflowWrap: "anywhere",
+                          whiteSpace: "normal",
+                          textAlign: "center",
+                        }}
+                      >
+                        {formatConfigCell(selectedMenu, column, row[column])}
+                      </td>
+                    ))}
+                    <td
+                      style={{
+                        position: "relative",
+                        height: 48,
+                        padding: 8,
+                        borderBottom: "1px solid #e2e8f0",
+                        textAlign: "center",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        aria-label={`Edit ${selectedMenu} row ${rowIndex + 1}`}
+                        onClick={() => {
+                          setEditedRow({ ...row });
+                          setEditingRowIndex(rowIndex);
+                        }}
+                        style={{
+                          padding: "7px 8px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          background: "white",
+                          color: "#0f172a",
+                          fontSize: 12,
+                          cursor: "pointer",
+                          marginRight: 4,
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Delete ${selectedMenu} row ${rowIndex + 1}`}
+                        onClick={() => setDeleteTarget({
+                          menu: selectedMenu,
+                          rowIndex,
+                        })}
+                        style={{
+                          padding: "7px 8px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          background: "white",
+                          color: "#0f172a",
+                          fontSize: 12,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {editingRowIndex === null && !addWindowOpen && (
             <div
               style={{
                 display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                minHeight: 0,
-                overflow: "hidden",
-                background: "white",
+                alignItems: "center",
+                gap: 12,
+                flexShrink: 0,
+                marginTop: 12,
+                padding: "10px 12px",
+                background: "#d7d7d7",
                 border: "1px solid #cbd5e1",
                 borderRadius: 8,
-                padding: 16,
-                boxSizing: "border-box",
+                boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
               }}
             >
-              <App
-                onConfigSelected={handleEditorConfigSelected}
-                onChooseFile={handleChooseEditorFile}
-                onCreateNew={handleCreateNewConfig}
-                onStatusChange={onStatusChange}
-              />{" "}
-            </div>
-          )}{" "}
-          {/* Configuration Sections */}{" "}
-          {configMenus.includes(selectedMenu) && (
-            <section
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                minHeight: 0,
-                overflow: "hidden",
-                background: "white",
-                border: "1px solid #cbd5e1",
-                borderRadius: 8,
-                padding: 24,
-                boxSizing: "border-box",
-              }}
-            >
-              {" "}
-              <h1 style={{ marginTop: 0, fontSize: 28 }}>{selectedMenu}</h1>{" "}
-              <p style={{ color: "#64748b" }}>
-                {" "}
-              </p>{" "}
-              {/* Render read-only rows from the selected submenu schema. */}
-              <div style={{ flex: 1, minHeight: 0, overflow: "auto", width: "100%" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    minWidth: 900,
-                    tableLayout: "fixed",
-                    borderCollapse: "collapse",
-                    textAlign: "left",
-                  }}
-                >
-                  <colgroup>
-                    <col style={{ width: 76 }} />
-                    {configTableColumns[selectedMenu].map((column) => (
-                      <col
-                        key={column}
-                        style={{ width: Math.max(160, column.length * 12 + 40) }}
-                      />
-                    ))}
-                    <col style={{ width: 170 }} />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th
-                        scope="col"
-                        style={{
-                          padding: 10,
-                          borderBottom: "2px solid #cbd5e1",
-                          borderRight: "1px solid #e2e8f0",
-                          background: "#f8fafc",
-                          textAlign: "center",
-                        }}
-                      >
-                        Item #
-                      </th>
-                      {configTableColumns[selectedMenu].map((column) => (
-                        <th
-                          key={column}
-                          scope="col"
-                          style={{
-                            padding: 10,
-                            borderBottom: "2px solid #cbd5e1",
-                            borderRight: "1px solid #e2e8f0",
-                            background: "#f8fafc",
-                            textAlign: "center",
-                          }}
-                        >
-                          {column}
-                        </th>
-                      ))}
-                      <th
-                        scope="col"
-                        style={{
-                          padding: 10,
-                          borderBottom: "2px solid #cbd5e1",
-                          borderLeft: "1px solid #e2e8f0",
-                          background: "#f8fafc",
-                          textAlign: "center",
-                        }}
-                      >
-                        Actions
-                      </th>
-
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(configRows[selectedMenu] ?? []).map((row, rowIndex) => (
-                      <tr key={`${selectedMenu}-${rowIndex}`} style={{ height: 48 }}>
-                        <td
-                          style={{
-                            height: 48,
-                            padding: 8,
-                            borderBottom: "1px solid #e2e8f0",
-                            textAlign: "center",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {rowIndex + 1}
-                        </td>
-                        {configTableColumns[selectedMenu].map((column) => (
-                          <td
-                            key={column}
-                            style={{
-                              height: 48,
-                              padding: 8,
-                              borderBottom: "1px solid #e2e8f0",
-                              overflowWrap: "anywhere",
-                              whiteSpace: "normal",
-                              textAlign: "center",
-                            }}
-                          >
-                            {formatConfigCell(selectedMenu, column, row[column])}
-                          </td>
-                        ))}
-                        <td
-                          style={{
-                            position: "relative",
-                            height: 48,
-                            padding: 8,
-                            borderBottom: "1px solid #e2e8f0",
-                            textAlign: "center",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          <button
-                            type="button"
-                            aria-label={`Edit ${selectedMenu} row ${rowIndex + 1}`}
-                            onClick={() => {
-                              setEditedRow({ ...row });
-                              setEditingRowIndex(rowIndex);
-                            }}
-                            style={{
-                              padding: "7px 8px",
-                              border: "1px solid #cbd5e1",
-                              borderRadius: 4,
-                              background: "white",
-                              color: "#0f172a",
-                              fontSize: 12,
-                              cursor: "pointer",
-                              marginRight: 4,
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Delete ${selectedMenu} row ${rowIndex + 1}`}
-                            onClick={() => setDeleteTarget({
-                              menu: selectedMenu,
-                              rowIndex,
-                            })}
-                            style={{
-                              padding: "7px 8px",
-                              border: "1px solid #cbd5e1",
-                              borderRadius: 4,
-                              background: "white",
-                              color: "#0f172a",
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {editingRowIndex === null && !addWindowOpen && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    flexShrink: 0,
-                    marginTop: 12,
-                    padding: "10px 12px",
-                    background: "#d7d7d7",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 8,
-                    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
-                  }}
-                >
-                  <span style={{ color: "#475569", fontSize: 13 }}>
-                    Add to {selectedMenu}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewRow(Object.fromEntries(configTableColumns[selectedMenu].map((column) => [column, ""])));
-                      setAddWindowOpen(true);
-                    }}
-                    style={{
-                      padding: "6px 10px",
-                      border: 0,
-                      borderRadius: 6,
-                      background: "#334155",
-                      color: "#f8fafc",
-                      fontSize: 13,
-                      fontWeight: "bold",
-                      cursor: "pointer",
-                    }}
-                  >
-                    + Add
-                  </button>
-                </div>
-              )}
-              {editingRowIndex !== null && (
-                <div
-                  role="region"
-                  aria-label={`Edit ${selectedMenu} row`}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    flexWrap: "wrap",
-                    gap: 12,
-                    flexShrink: 0,
-                    maxHeight: "45%",
-                    marginTop: 12,
-                    padding: 16,
-                    background: "white",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 8,
-                    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
-                    overflow: "auto",
-                  }}
-                >
-                  {configTableColumns[selectedMenu].map((column) => (
-                    <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
-                      {column}
-                      <ConfigFieldEditor
-                        menu={selectedMenu}
-                        column={column}
-                        value={editedRow[column] ?? ""}
-                        onChange={(value) =>
-                          setEditedRow((current) => ({ ...current, [column]: value }))
-                        }
-                      />
-                    </label>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingRowIndex(null);
-                      setEditedRow({});
-                    }}
-                    style={{ padding: "8px 12px", flexShrink: 0 }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={editorDraftChecking}
-                    onClick={() => void handleApplyEditedRow()}
-                    style={{ padding: "8px 12px", background: "#334155", color: "white", border: 0, borderRadius: 6, flexShrink: 0 }}
-                  >
-                    {editorDraftChecking ? "Checking..." : "Apply"}
-                  </button>
-                </div>
-              )}
-              {addWindowOpen && (
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void handleAddNewRow();
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    flexWrap: "wrap",
-                    gap: 12,
-                    flexShrink: 0,
-                    maxHeight: "45%",
-                    marginTop: 12,
-                    padding: 16,
-                    background: "#d7d7d7",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 8,
-                    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
-                    overflow: "auto",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
-                    <span style={{ fontWeight: "bold", color: "#0f172a" }}>Add {selectedMenu}</span>
-                  </div>
-                  {configTableColumns[selectedMenu].map((column) => (
-                    <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
-                      {column}
-                      <ConfigFieldEditor
-                        menu={selectedMenu}
-                        column={column}
-                        value={newRow[column] ?? ""}
-                        autoFocus={column === configTableColumns[selectedMenu][0]}
-                        onChange={(value) =>
-                          setNewRow((current) => ({ ...current, [column]: value }))
-                        }
-                      />
-                    </label>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddWindowOpen(false);
-                      setNewRow({});
-                    }}
-                    style={{ padding: "8px 12px", flexShrink: 0 }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={editorAddingRow || editorDraftChecking}
-                    style={{
-                      padding: "8px 12px",
-                      background: "#334155",
-                      color: "white",
-                      border: 0,
-                      borderRadius: 6,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {editorAddingRow ? "Checking..." : "Add"}
-                  </button>
-                </form>
-              )}
-              {(editorDraftStatus || editorDraftErrors.length > 0) && (
-                <div
-                  className={
-                    editorDraftErrors.length > 0
-                      ? "retro-validation-errors"
-                      : undefined
-                  }
-                  role={editorDraftErrors.length > 0 ? "alert" : "status"}
-                  style={{
-                    marginTop: 12,
-                    padding: "10px 14px",
-                    color: editorDraftErrors.length > 0 ? "#991b1b" : "#166534",
-                    background:
-                      editorDraftErrors.length > 0 ? "#fef2f2" : "#f0fdf4",
-                    border: `1px solid ${
-                      editorDraftErrors.length > 0 ? "#fecaca" : "#bbf7d0"
-                    }`,
-                    borderRadius: 6,
-                  }}
-                >
-                  <strong>{editorDraftStatus}</strong>
-                  {editorDraftErrors.length > 0 && (
-                    <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
-                      {editorDraftErrors.map((error, index) => (
-                        <li key={index}>{error}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-              <div
+              <span style={{ color: "#475569", fontSize: 13 }}>
+                Add to {selectedMenu}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewRow(Object.fromEntries(configTableColumns[selectedMenu].map((column) => [column, ""])));
+                  setAddWindowOpen(true);
+                }}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  flexShrink: 0,
-                  marginTop: 12,
-                  paddingTop: 12,
-                  borderTop: "1px solid #cbd5e1",
+                  padding: "6px 10px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: "#334155",
+                  color: "#f8fafc",
+                  fontSize: 13,
+                  fontWeight: "bold",
+                  cursor: "pointer",
                 }}
               >
-                <div>
-                  {editorFileName && (
-                    <span style={{ color: "#475569", fontSize: 13 }}>
-                      Editing {editorFileName}
-                    </span>
-                  )}
-                  {editorSaveStatus && (
-                    <p
-                      role={editorSaveFailed ? "alert" : "status"}
-                      style={{
-                        margin: "4px 0 0",
-                        color: editorSaveFailed ? "#b91c1c" : "#475569",
-                        fontSize: 13,
-                        whiteSpace: "pre-line",
-                      }}
-                    >
-                      {editorSaveStatus}
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void handleSaveEditorConfig()}
-                  disabled={
-                    !editorDirty ||
-                    !editorFileName ||
-                    editorSaving ||
-                    editorDraftChecking ||
-                    !editorDraftValid ||
-                    editorDraftErrors.length > 0 ||
-                    editingRowIndex !== null ||
-                    addWindowOpen
-                  }
+                + Add
+              </button>
+            </div>
+          )}
+          {editingRowIndex !== null && (
+            <div
+              role="region"
+              aria-label={`Edit ${selectedMenu} row`}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 12,
+                flexShrink: 0,
+                maxHeight: "45%",
+                marginTop: 12,
+                padding: 16,
+                background: "white",
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
+                overflow: "auto",
+              }}
+            >
+              {configTableColumns[selectedMenu].map((column) => (
+                <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
+                  {column}
+                  <ConfigFieldEditor
+                    menu={selectedMenu}
+                    column={column}
+                    value={editedRow[column] ?? ""}
+                    onChange={(value) =>
+                      setEditedRow((current) => ({ ...current, [column]: value }))
+                    }
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingRowIndex(null);
+                  setEditedRow({});
+                }}
+                style={{ padding: "8px 12px", flexShrink: 0 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={editorDraftChecking}
+                onClick={() => void handleApplyEditedRow()}
+                style={{ padding: "8px 12px", background: "#334155", color: "white", border: 0, borderRadius: 6, flexShrink: 0 }}
+              >
+                {editorDraftChecking ? "Checking..." : "Apply"}
+              </button>
+            </div>
+          )}
+          {addWindowOpen && (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleAddNewRow();
+              }}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 12,
+                flexShrink: 0,
+                maxHeight: "45%",
+                marginTop: 12,
+                padding: 16,
+                background: "#d7d7d7",
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
+                overflow: "auto",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+                <span style={{ fontWeight: "bold", color: "#0f172a" }}>Add {selectedMenu}</span>
+              </div>
+              {configTableColumns[selectedMenu].map((column) => (
+                <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
+                  {column}
+                  <ConfigFieldEditor
+                    menu={selectedMenu}
+                    column={column}
+                    value={newRow[column] ?? ""}
+                    autoFocus={column === configTableColumns[selectedMenu][0]}
+                    onChange={(value) =>
+                      setNewRow((current) => ({ ...current, [column]: value }))
+                    }
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setAddWindowOpen(false);
+                  setNewRow({});
+                }}
+                style={{ padding: "8px 12px", flexShrink: 0 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={editorAddingRow || editorDraftChecking}
+                style={{
+                  padding: "8px 12px",
+                  background: "#334155",
+                  color: "white",
+                  border: 0,
+                  borderRadius: 6,
+                  flexShrink: 0,
+                }}
+              >
+                {editorAddingRow ? "Checking..." : "Add"}
+              </button>
+            </form>
+          )}
+          {(editorDraftStatus || editorDraftErrors.length > 0) && (
+            <div
+              className={
+                editorDraftErrors.length > 0
+                  ? "retro-validation-errors"
+                  : undefined
+              }
+              role={editorDraftErrors.length > 0 ? "alert" : "status"}
+              style={{
+                marginTop: 12,
+                padding: "10px 14px",
+                color: editorDraftErrors.length > 0 ? "#991b1b" : "#166534",
+                background:
+                  editorDraftErrors.length > 0 ? "#fef2f2" : "#f0fdf4",
+                border: `1px solid ${editorDraftErrors.length > 0 ? "#fecaca" : "#bbf7d0"
+                  }`,
+                borderRadius: 6,
+              }}
+            >
+              <strong>{editorDraftStatus}</strong>
+              {editorDraftErrors.length > 0 && (
+                <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
+                  {editorDraftErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexShrink: 0,
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: "1px solid #cbd5e1",
+            }}
+          >
+            <div>
+              {editorFileName && (
+                <span style={{ color: "#475569", fontSize: 13 }}>
+                  Editing {editorFileName}
+                </span>
+              )}
+              {editorSaveStatus && (
+                <p
+                  role={editorSaveFailed ? "alert" : "status"}
                   style={{
-                    padding: "9px 14px",
-                    border: 0,
-                    borderRadius: 6,
-                    background:
-                      editorDirty &&
-                      editorFileName &&
-                      editorDraftValid &&
-                      !editorDraftChecking &&
-                      editorDraftErrors.length === 0
-                        ? "#334155"
-                        : "#94a3b8",
-                    color: "white",
-                    fontWeight: "bold",
-                    cursor:
-                      editorDirty &&
-                      editorFileName &&
-                      editorDraftValid &&
-                      !editorDraftChecking &&
-                      editorDraftErrors.length === 0
-                        ? "pointer"
-                        : "not-allowed",
+                    margin: "4px 0 0",
+                    color: editorSaveFailed ? "#b91c1c" : "#475569",
+                    fontSize: 13,
+                    whiteSpace: "pre-line",
                   }}
                 >
-                  {editorSaving ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-              {deleteTarget && (
-                <div className="retro-dialog-backdrop">
-                  <section
-                    aria-labelledby="delete-confirmation-title"
-                    aria-modal="true"
-                    className="retro-dialog"
-                    role="alertdialog"
-                  >
-                    <header className="retro-dialog-titlebar">
-                      Confirm Delete
-                    </header>
-                    <div className="retro-dialog-content">
-                      <p id="delete-confirmation-title">
-                        Delete {deleteTarget.menu} item {deleteTarget.rowIndex + 1}?
-                      </p>
-                      <div className="retro-dialog-actions">
-                        <button
-                          autoFocus
-                          type="button"
-                          onClick={() => setDeleteTarget(null)}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const { menu, rowIndex } = deleteTarget;
-                            const updatedOriginalConfig = removeConfigTableRow(
-                              originalEditorConfig,
-                              menu,
-                              rowIndex,
-                            );
-                            const updatedTables = {
-                              ...configRows,
-                              [menu]: (configRows[menu] ?? []).filter(
-                                (_, index) => index !== rowIndex,
-                              ),
-                            };
-                            setOriginalEditorConfig(updatedOriginalConfig);
-                            setConfigRows(updatedTables);
-                            setEditorDirty(true);
-                            setEditingRowIndex(null);
-                            setEditedRow({});
-                            setDeleteTarget(null);
-                            void validateEditorDraft(
-                              updatedTables,
-                              updatedOriginalConfig,
-                            );
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </section>
-                </div>
+                  {editorSaveStatus}
+                </p>
               )}
-            </section>
-          )}{" "}
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleSaveEditorConfig()}
+              disabled={
+                !editorDirty ||
+                !editorFileName ||
+                editorSaving ||
+                editorDraftChecking ||
+                !editorDraftValid ||
+                editorDraftErrors.length > 0 ||
+                editingRowIndex !== null ||
+                addWindowOpen
+              }
+              style={{
+                padding: "9px 14px",
+                border: 0,
+                borderRadius: 6,
+                background:
+                  editorDirty &&
+                    editorFileName &&
+                    editorDraftValid &&
+                    !editorDraftChecking &&
+                    editorDraftErrors.length === 0
+                    ? "#334155"
+                    : "#94a3b8",
+                color: "white",
+                fontWeight: "bold",
+                cursor:
+                  editorDirty &&
+                    editorFileName &&
+                    editorDraftValid &&
+                    !editorDraftChecking &&
+                    editorDraftErrors.length === 0
+                    ? "pointer"
+                    : "not-allowed",
+              }}
+            >
+              {editorSaving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+          {deleteTarget && (
+            <div className="retro-dialog-backdrop">
+              <section
+                aria-labelledby="delete-confirmation-title"
+                aria-modal="true"
+                className="retro-dialog"
+                role="alertdialog"
+              >
+                <header className="retro-dialog-titlebar">
+                  Confirm Delete
+                </header>
+                <div className="retro-dialog-content">
+                  <p id="delete-confirmation-title">
+                    Delete {deleteTarget.menu} item {deleteTarget.rowIndex + 1}?
+                  </p>
+                  <div className="retro-dialog-actions">
+                    <button
+                      autoFocus
+                      type="button"
+                      onClick={() => setDeleteTarget(null)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const { menu, rowIndex } = deleteTarget;
+                        const updatedOriginalConfig = removeConfigTableRow(
+                          originalEditorConfig,
+                          menu,
+                          rowIndex,
+                        );
+                        const updatedTables = {
+                          ...configRows,
+                          [menu]: (configRows[menu] ?? []).filter(
+                            (_, index) => index !== rowIndex,
+                          ),
+                        };
+                        setOriginalEditorConfig(updatedOriginalConfig);
+                        setConfigRows(updatedTables);
+                        setEditorDirty(true);
+                        setEditingRowIndex(null);
+                        setEditedRow({});
+                        setDeleteTarget(null);
+                        void validateEditorDraft(
+                          updatedTables,
+                          updatedOriginalConfig,
+                        );
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+        </section>
+      )}{" "}
     </div>
   );
 }

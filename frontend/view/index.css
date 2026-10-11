@@ -262,6 +262,37 @@ a {
   border-color: #808080 #fff #fff #808080;
 }
 
+.config-start-screen {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.config-start-screen h1 {
+  text-align: center;
+}
+
+.config-start-card {
+  width: min(500px, 100%);
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #808080;
+  box-shadow: 1px 1px 0 #fff;
+  text-align: center;
+}
+
+.config-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
 .retro-dialog-backdrop {
   position: fixed;
   z-index: 1000;

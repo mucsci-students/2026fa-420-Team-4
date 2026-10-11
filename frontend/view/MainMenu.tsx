@@ -102,6 +102,8 @@ export default function MainMenu() {
           <div
             style={{
               display: activeOption === "Configuration Editor" ? "flex" : "none",
+              width: "100%",
+              flex: 1,
               height: "100%",
               minHeight: 0,
             }}
