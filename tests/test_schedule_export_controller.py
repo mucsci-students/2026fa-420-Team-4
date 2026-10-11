@@ -11,12 +11,13 @@ def test_export_schedule_csv_returns_generated_csv(monkeypatch):
         "schedule",
         [{"schedule_id": 1, "courses": ["CS101, Room A1"]}],
     )
+    monkeypatch.setattr(store, "config_filename", "fall-term.json")
 
     response = export_schedule_csv()
 
     assert response.media_type.startswith("text/csv")
     assert response.headers["content-disposition"] == (
-        'attachment; filename="schedules.csv"'
+        'attachment; filename="fall-term_schedules.csv"'
     )
     assert b"schedule_number,schedule_id,courses" in response.body
     assert b'"CS101, Room A1"' in response.body

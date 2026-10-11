@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
@@ -23,8 +25,16 @@ def export_schedule_csv():
             detail=f"Could not export generated schedules: {error}",
         ) from error
 
+    filename = ScheduleExporter.schedule_export_filename(
+        store.config_filename, ".csv"
+    )
+    if filename.isascii():
+        content_disposition = f'attachment; filename="{filename}"'
+    else:
+        content_disposition = f"attachment; filename*=UTF-8''{quote(filename)}"
+
     return Response(
         content=csv_content,
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="schedules.csv"'},
+        headers={"Content-Disposition": content_disposition},
     )

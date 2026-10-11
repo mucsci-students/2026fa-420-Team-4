@@ -22,6 +22,7 @@ async def upload_config(file: UploadFile = File(...)):
         combined_config = CombinedConfig.model_validate(data)
 
         store.raw_config = data
+        store.config_filename = file.filename
         store.config_object = combined_config
         store.is_loaded = True
 

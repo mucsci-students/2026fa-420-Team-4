@@ -50,5 +50,18 @@ export const exportScheduleCsv = async () => {
   const response = await api.get('/schedule/export/csv', {
     responseType: 'blob',
   });
-  return response.data as Blob;
+  const contentDisposition = response.headers['content-disposition'] as
+    | string
+    | undefined;
+  const encodedFilename = contentDisposition?.match(
+    /filename\*=UTF-8''([^;]+)/i,
+  )?.[1];
+  const quotedFilename = contentDisposition?.match(
+    /filename="([^"]+)"/i,
+  )?.[1];
+  const filename = encodedFilename
+    ? decodeURIComponent(encodedFilename)
+    : quotedFilename ?? 'schedules.csv';
+
+  return { blob: response.data as Blob, filename };
 };

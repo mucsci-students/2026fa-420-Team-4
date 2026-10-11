@@ -3,12 +3,26 @@
 import csv
 import io
 import json
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 
 
-def _choose_export_path() -> str:
+def schedule_export_filename(source_filename: str | None, extension: str) -> str:
+    """Build a safe schedules filename from the loaded configuration filename."""
+    extension = extension.lower()
+    if extension not in (".json", ".csv"):
+        raise ValueError("Schedule export extension must be .json or .csv")
+
+    source_basename = (source_filename or "").replace("\\", "/").rsplit("/", 1)[-1]
+    source_stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", Path(source_basename).stem)
+    source_stem = source_stem.strip(" .")
+    stem = f"{source_stem}_schedules" if source_stem else "schedules"
+    return f"{stem}{extension}"
+
+
+def _choose_export_path(initial_filename: str = "schedules.json") -> str:
     """Open a save dialog and return the selected destination, if any."""
     import tkinter as tk
     from tkinter import filedialog
@@ -20,6 +34,7 @@ def _choose_export_path() -> str:
         return filedialog.asksaveasfilename(
             title="Export schedules",
             defaultextension=".json",
+            initialfile=initial_filename,
             filetypes=(("JSON files", "*.json"), ("CSV files", "*.csv")),
         )
     finally:
@@ -108,17 +123,22 @@ def schedules_to_csv(schedules: Sequence[object]) -> str:
     return output.getvalue()
 
 
-def export_schedules(schedules: Sequence[object]) -> Path | None:
+def export_schedules(
+    schedules: Sequence[object], source_filename: str | None = None
+) -> Path | None:
     """Export an array of schedule objects after the user chooses a destination.
 
     The destination extension selects JSON or CSV. Returning ``None`` means the
-    user cancelled the save dialog.
+    user cancelled the save dialog. ``source_filename`` supplies the base name
+    for the suggested ``*_schedules`` export filename.
     """
     if isinstance(schedules, (str, bytes)) or not isinstance(schedules, Sequence):
         raise TypeError("schedules must be a sequence of schedule objects")
 
     schedule_data = [_to_serializable(schedule) for schedule in schedules]
-    selected_path = _choose_export_path()
+    selected_path = _choose_export_path(
+        schedule_export_filename(source_filename, ".json")
+    )
     if not selected_path:
         return None
 
