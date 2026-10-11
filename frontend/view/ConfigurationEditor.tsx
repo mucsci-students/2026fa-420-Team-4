@@ -46,6 +46,7 @@ function formatCellDisplay(value: string | undefined): string {
   return value;
 }
 
+/** Summarize time ranges and optional spacing for each day. */
 function formatTimeBlocks(value: unknown): string {
   const days = asObject(value);
   return Object.entries(days)
@@ -120,6 +121,7 @@ function parseEditorJson(value: string, fallback: unknown): unknown {
 const editorDays = ["MON", "TUE", "WED", "THU", "FRI"];
 const preferenceColumns = ["Course Preferences", "Room Preferences", "Lab Preferences"];
 
+/** Remove unnamed faculty preferences before storing a row; leave other sections unchanged. */
 function prepareRowForCommit(menu: string, row: ConfigTableRow): ConfigTableRow {
   if (menu !== "Faculty") return row;
   return Object.fromEntries(Object.entries(row).map(([column, value]) => [
@@ -147,6 +149,7 @@ const listFields: Record<string, string[]> = {
   ],
 };
 
+/** Edit a list as comma-separated text and emit JSON, optionally preserving an empty nullable value. */
 function CommaSeparatedListField({
   column,
   value,
@@ -214,6 +217,7 @@ const structuredEditorStyle = {
   background: "#f8fafc",
 };
 
+/** Render the appropriate input for a configuration cell and emit serialized changes. */
 function ConfigFieldEditor({
   menu,
   column,
@@ -638,6 +642,7 @@ interface ConfigurationEditorProps {
   onStatusChange: (message: string) => void;
 }
 
+/** Render the selected configuration section with row editing, validation, and file saving. */
 export default function ConfigurationEditor({
   selectedMenu,
   onStatusChange,
@@ -666,14 +671,17 @@ export default function ConfigurationEditor({
   } | null>(null);
   const [editorFileController] = useState(createConfigFileController);
   const validationRequestId = useRef(0);
+  /** Update the local save status and publish nonempty messages to the shared status bar. */
   const setEditorSaveStatus = (message: string) => {
     setEditorSaveStatusState(message);
     if (message) onStatusChange(message);
   };
+  /** Clear the previous save message and failure flag after an edit. */
   const clearEditorValidationStatus = () => {
     setEditorSaveStatusState("");
     setEditorSaveFailed(false);
   };
+  /** Validate draft tables against the baseline configuration and ignore superseded responses. */
   const validateEditorDraft = async (
     draftTables: Record<string, ConfigTableRow[]>,
     baselineConfig = originalEditorConfig,
@@ -731,12 +739,14 @@ export default function ConfigurationEditor({
   useEffect(() => {
     if (!deleteTarget) return;
 
+    /** Dismiss the deletion confirmation when Escape is pressed. */
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setDeleteTarget(null);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [deleteTarget]);
+  /** Load configuration rows and reset editing and validation state, invalidating pending checks. */
   const handleEditorConfigSelected = (config: unknown) => {
     setOriginalEditorConfig(config);
     setConfigRows(getConfigTableRows(config));
@@ -752,6 +762,7 @@ export default function ConfigurationEditor({
     setAddWindowOpen(false);
     setNewRow({});
   };
+  /** Validate and open a configuration file, returning its contents and reporting load progress. */
   const handleChooseEditorFile = async (
     file: File,
   ): Promise<OpenedConfigFile> => {
@@ -762,6 +773,7 @@ export default function ConfigurationEditor({
     onStatusChange(`${file.name} loaded successfully.`);
     return selected;
   };
+  /** Initialize an empty configuration and reset editor state for a new file. */
   const handleCreateNewConfig = () => {
     setEditorFileName(editorFileController.create());
     setOriginalEditorConfig({});
@@ -779,6 +791,7 @@ export default function ConfigurationEditor({
     setNewRow({});
     onStatusChange("New configuration created.");
   };
+  /** Append the prepared row, close the add dialog, and validate the updated draft. */
   const handleAddNewRow = () => {
     const currentRows = configRows[selectedMenu] ?? [];
     const updatedTables = {
@@ -792,6 +805,7 @@ export default function ConfigurationEditor({
     setNewRow({});
     void validateEditorDraft(updatedTables);
   };
+  /** Apply the prepared row edit and validate the updated draft when a row is selected. */
   const handleApplyEditedRow = () => {
     if (editingRowIndex === null) return;
     const updatedTables = {
@@ -807,6 +821,7 @@ export default function ConfigurationEditor({
     setEditedRow({});
     void validateEditorDraft(updatedTables);
   };
+  /** Validate and download the edited configuration, reporting validation or save failures. */
   const handleSaveEditorConfig = async () => {
     if (originalEditorConfig === null || !editorFileName) {
       setEditorSaveStatus("Create a new configuration or choose an existing file before saving.");

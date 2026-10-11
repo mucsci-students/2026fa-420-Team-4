@@ -15,6 +15,7 @@ export interface GenerationSettings {
   optimizer_flags: string[];
 }
 
+/** Create a controller that retains a loaded configuration and serializes updated generation settings. */
 export function createGenerationSettingsController() {
   let config: Record<string, unknown> | null = null;
   let fileName = "";
@@ -26,6 +27,7 @@ export function createGenerationSettingsController() {
     return config;
   };
 
+  /** Reject limits that are not positive safe integers, allowing zero only when requested. */
   const validateLimit = (limit: number, allowZero = false) => {
     if (!Number.isSafeInteger(limit) || limit < (allowZero ? 0 : 1)) {
       const requirement = allowZero
@@ -75,6 +77,7 @@ export function createGenerationSettingsController() {
       config = null;
       fileName = "";
     },
+    /** Set the loaded configuration limit, allowing zero to clear schedules; throw if invalid or unloaded. */
     setLimit(limit: number): void {
       validateLimit(limit, true);
       requireConfig().limit = limit;

@@ -15,6 +15,7 @@ const options: MainOption[] = [
   "Schedule Viewer",
 ];
 
+/** Render the application navigation, persistent views, and shared status bar. */
 export default function MainMenu() {
   const [activeOption, setActiveOption] =
     useState<MainOption>("Configuration Editor");

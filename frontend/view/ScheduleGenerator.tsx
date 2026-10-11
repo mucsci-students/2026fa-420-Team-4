@@ -17,6 +17,7 @@ const optimizerFlagOptions = [
   { value: "pack_labs", label: "Pack Labs" },
 ];
 
+/** Render configuration loading, generation settings, and schedule export controls. */
 export default function ScheduleGenerator({
   onStatusChange,
 }: {
@@ -54,6 +55,7 @@ export default function ScheduleGenerator({
       generationSettingsController.setOptimizerFlags(updatedFlags);
     }
   };
+  /** Load the selected configuration into the controller and backend, reporting any errors. */
   const handleGenerationConfigSelected = async (file: File | undefined) => {
     if (!file) return;
     setConfigLoading(true);
@@ -93,6 +95,7 @@ export default function ScheduleGenerator({
       setConfigLoading(false);
     }
   };
+  /** Request schedules using the current limit, or clear results when the limit is zero. */
   const handleGenerateSchedule = async () => {
     setGeneratingSchedules(true);
     setGenerationError("");
@@ -121,6 +124,7 @@ export default function ScheduleGenerator({
       setGeneratingSchedules(false);
     }
   };
+  /** Download generated schedules as CSV and report export progress or errors. */
   const handleExportSchedule = async () => {
     setExportingSchedule(true);
     setGenerationError("");

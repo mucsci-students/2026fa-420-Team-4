@@ -7,6 +7,12 @@ router = APIRouter(prefix="/api/generator", tags=["Generator"])
 
 @router.post("/run")
 def run_generator(limit: int | None = Query(default=None, ge=0)):
+    """Generate and store schedules for the loaded configuration.
+
+    A supplied limit overrides the configured limit; zero clears stored schedules
+    without generation. Return the status, count, and schedules. Raise HTTP 400
+    if no configuration is loaded, or HTTP 500 if scheduling fails.
+    """
     if not store.is_loaded or store.config_object is None:
         raise HTTPException(
             status_code=400,

@@ -155,6 +155,8 @@ export function getConfigTableRows(configValue: unknown): ConfigTables {
   };
 }
 
+/** Return a copied configuration with the indexed row removed from the selected collection.
+ * Unsupported sections and out-of-range indices leave existing rows intact. */
 export function removeConfigTableRow(
   originalConfig: unknown,
   menu: string,
@@ -203,6 +205,8 @@ function parseCellValue(menu: string, column: string, value: string): unknown {
   }
 }
 
+/** Convert table cells to configuration values while preserving unedited fields by row index.
+ * Empty nullable cells become null, and empty optional fields are omitted. */
 function toConfigObjects(
   menu: string,
   rows: ConfigTableRow[],

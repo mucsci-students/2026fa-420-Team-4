@@ -41,6 +41,7 @@ export const getConfig = async () => {
   return response.data;
 };
 
+/** Request schedule generation with the supplied limit and return the response data; zero clears results. */
 export const runGenerator = async (limit: number) => {
   const response = await api.post('/generator/run', null, {
     params: { limit },

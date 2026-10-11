@@ -11,6 +11,7 @@ interface AppProps {
   onStatusChange: (message: string) => void;
 }
 
+/** Render configuration creation and file loading controls with status and error feedback. */
 export function App({
   onConfigSelected,
   onChooseFile,
@@ -21,6 +22,7 @@ export function App({
   const [status, setStatus] = useState<string>('');
   const [errors, setErrors] = useState<string[]>([]);
 
+  /** Open a selected configuration and report loading results; ignore an empty selection. */
   const handleChooseFile = async (selectedFile: File | undefined) => {
     if (!selectedFile) return;
     setErrors([]);
