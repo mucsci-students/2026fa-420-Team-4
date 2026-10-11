@@ -20,7 +20,11 @@ export default function RetroConfirmDialog({
   const dialogId = useId();
 
   useEffect(() => {
+    const previousFocus = document.activeElement;
     cancelButton.current?.focus();
+    return () => {
+      if (previousFocus instanceof HTMLElement) previousFocus.focus();
+    };
   }, []);
 
   useEffect(() => {
@@ -40,7 +44,7 @@ export default function RetroConfirmDialog({
         className="retro-dialog"
         role="alertdialog"
       >
-        <header className="retro-dialog-titlebar">{title}</header>
+        <header id={`${dialogId}-title`} className="retro-dialog-titlebar">{title}</header>
         <div className="retro-dialog-content">
           <p id={`${dialogId}-message`}>{message}</p>
           <div className="retro-dialog-actions">

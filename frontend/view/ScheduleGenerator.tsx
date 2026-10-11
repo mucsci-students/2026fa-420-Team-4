@@ -163,7 +163,7 @@ export default function ScheduleGenerator({
   };
 
   const handleGenerateSchedule = () => {
-    if (configFile === null || generationLimitError !== "") return;
+    if (configLoading || configFile === null || generationLimitError !== "") return;
     if (generationLimit === 0) {
       setConfirmClearSchedules(true);
       return;
@@ -391,6 +391,7 @@ export default function ScheduleGenerator({
         onClick={() => void handleGenerateSchedule()}
         disabled={
           generatingSchedules ||
+          configLoading ||
           configFile === null ||
           generationLimitError !== ""
         }
