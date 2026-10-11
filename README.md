@@ -110,7 +110,10 @@ http://localhost:3000
 
 The Schedule Viewer displays available schedules as tables grouped by room/lab
 or faculty. It supports schedule navigation, loading a JSON schedule file,
-clearing loaded results, and exporting the currently available schedules.
+clearing loaded results, and exporting either the selected schedule or all
+currently available schedules as JSON. Exports go to the browser's configured
+downloads location; the viewer reports the generated filename and uses a unique
+timestamp and identifier for each download to prevent overwriting prior exports.
 Generated assignments include course, faculty, room/lab, day, start, duration,
 and end time. The viewer also recognizes schedule JSON files exported by older
 versions of the application.

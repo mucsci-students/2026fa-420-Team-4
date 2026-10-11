@@ -397,13 +397,27 @@ export default function ScheduleViewer({
     }
   };
 
-  /** Download available schedules as JSON and report success or failure. */
-  const handleExport = async () => {
+  /** Download the selected schedule or complete collection and report the result. */
+  const handleExport = (scope: "selected" | "all") => {
     setActionInProgress(true);
     setError("");
     try {
-      await controller.exportJson();
-      onStatusChange("Schedule data downloaded as JSON.");
+      const exportedSchedules =
+        scope === "selected" && selectedSchedule
+          ? [selectedSchedule]
+          : scope === "all"
+            ? schedules
+            : [];
+      if (exportedSchedules.length === 0) {
+        throw new Error("No schedules are available to export.");
+      }
+      const filename = controller.exportJson(
+        exportedSchedules,
+        scope === "selected" ? `schedule-${selectedIndex + 1}` : "schedules",
+      );
+      onStatusChange(
+        `JSON export download started: ${filename}. Check your browser's downloads location.`,
+      );
     } catch (exportError) {
       const message = `Could not export schedules: ${errorMessage(exportError)}`;
       setError(message);
@@ -480,10 +494,17 @@ export default function ScheduleViewer({
         />
         <button
           type="button"
-          onClick={() => void handleExport()}
+          onClick={() => handleExport("selected")}
+          disabled={!selectedSchedule || actionInProgress || loading}
+        >
+          Export Selected JSON
+        </button>
+        <button
+          type="button"
+          onClick={() => handleExport("all")}
           disabled={schedules.length === 0 || actionInProgress || loading}
         >
-          Export JSON
+          Export All JSON
         </button>
         <button
           type="button"
@@ -500,6 +521,11 @@ export default function ScheduleViewer({
         </p>
       )}
       {loading && <p role="status">Loading available schedules...</p>}
+      <p>
+        Exports are saved to your browser&apos;s configured downloads location.
+        Each JSON export gets a unique timestamped filename to avoid overwriting
+        an earlier export.
+      </p>
 
       {schedules.length > 0 && (
         <>
