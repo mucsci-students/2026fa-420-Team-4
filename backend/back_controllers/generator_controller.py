@@ -21,11 +21,9 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
 
     if limit == 0:
         store.schedule = []
-<<<<<<< HEAD
         store.generation_running = False
-=======
+        store.generation_progess = 0
         store.schedule_filename = None
->>>>>>> develop
         return {
             "status": "success",
             "count": 0,
@@ -58,11 +56,8 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
             store.generation_progess = schedule_idx
 
         store.schedule = schedules
-<<<<<<< HEAD
         store.generation_running = False
-=======
         store.schedule_filename = None
->>>>>>> develop
         return {
             "status": "success",
             "count": len(schedules),
@@ -71,6 +66,8 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
     except Exception as e:
         store.generation_running = False
         raise HTTPException(status_code=500, detail=f"Scheduling error: {str(e)}")
+
+
 @router.get("/progress")
 def get_generator_progress():
     return {
