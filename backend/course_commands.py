@@ -1,4 +1,6 @@
 import json
+import config_draft
+
 
 # Valid class modalities
 VALID_MODALITIES = {"in_person", "online", "hybrid"}
@@ -62,6 +64,9 @@ def course_add(shell, filename):
     try:
         with open(filename, "r") as f:
             data = json.load(f)
+
+        # Create a config instance
+        config = config_draft.Config()
 
         print("\n--- Add New Course ---")
 
@@ -152,25 +157,27 @@ def course_add(shell, filename):
 #   Jacob 10/7/26
 #   course config vars to save.... 
 #   My code would interject somewhere here, 
-        course = {
-            "course_id": course_id,
-            "section_id": section_id,
-            "credits": credits,
-            "capacity": capacity,
-            "modality": modality,
-            "room": room,
-            "lab": lab,
-            "required_room_features": req_room_features,
-            "required_lab_features": req_lab_features,
-            "reserve_room_during_lab": reserve_room_during_lab,
-            "conflicts": conflicts,
-            "faculty": faculty,
-        }
 
-        if "config" not in data or "courses" not in data["config"]:
-            data.setdefault("config", {})["courses"] = []
+        config.config.courses.append(
+            config_draft.Course(
+                course_id = course_id,
+                section_id= section_id,
+                credits= credits,
+                capacity= capacity,
+                modality= modality,
+                room= room,
+                lab= lab,
+                required_room_features= req_room_features,
+                required_lab_features= req_lab_features,
+                reserve_room_during_lab = reserve_room_during_lab,
+                conflicts = conflicts,
+                faculty = faculty,
+            )
+        )
+        # if "config" not in data or "courses" not in data["config"]:
+        #     data.setdefault("config", {})["courses"] = []
 
-        data["config"]["courses"].append(course)
+        data["config"]["courses"].append(config.config.courses)
 
         with open(filename, "w") as f:
             json.dump(data, f, indent=4)
