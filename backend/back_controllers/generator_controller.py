@@ -21,6 +21,7 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
 
     if limit == 0:
         store.schedule = []
+        store.schedule_filename = None
         return {
             "status": "success",
             "count": 0,
@@ -41,10 +42,14 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
         for schedule_idx, model in enumerate(scheduler.get_models(), start=1):
             schedules.append({
                 "schedule_id": schedule_idx,
-                "courses": [course.as_csv() for course in model]
+                "courses": [
+                    course.model_dump(mode="json", by_alias=True)
+                    for course in model
+                ],
             })
 
         store.schedule = schedules
+        store.schedule_filename = None
         return {
             "status": "success",
             "count": len(schedules),

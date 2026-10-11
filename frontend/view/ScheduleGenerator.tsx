@@ -1,12 +1,16 @@
 import { useRef, useState } from "react";
 import axios from "axios";
-import { runGenerator, uploadConfig } from "./api";
+import {
+  runGenerator,
+  uploadConfig,
+  type ScheduleExportFormat,
+} from "./api";
 import {
   createGenerationSettingsController,
   DEFAULT_GENERATION_LIMIT,
 } from "./front_controllers/generationSettingsController";
 import { formatConfigErrors } from "./configErrorMessages";
-import { exportScheduleCsvFile } from "./front_controllers/scheduleExportController";
+import { exportScheduleFile } from "./front_controllers/scheduleExportController";
 const optimizerFlagOptions = [
   { value: "faculty_course", label: "Faculty \u2192 Course Preference" },
   { value: "faculty_room", label: "Faculty \u2192 Room Preference" },
@@ -38,6 +42,8 @@ export default function ScheduleGenerator({
   const [generationError, setGenerationError] = useState("");
   const [generatingSchedules, setGeneratingSchedules] = useState(false);
   const [exportingSchedule, setExportingSchedule] = useState(false);
+  const [exportFormat, setExportFormat] =
+    useState<ScheduleExportFormat>("json");
   const [configFile, setConfigFile] = useState<File | null>(null);
   const [configLoading, setConfigLoading] = useState(false);
   const [configStatus, setConfigStatus] = useState("");
@@ -128,14 +134,16 @@ export default function ScheduleGenerator({
       setGeneratingSchedules(false);
     }
   };
-  /** Download generated schedules as CSV and report export progress or errors. */
+  /** Download generated schedules in the selected format and report progress or errors. */
   const handleExportSchedule = async () => {
     setExportingSchedule(true);
     setGenerationError("");
     onStatusChange("Exporting schedules...");
     try {
-      await exportScheduleCsvFile();
-      onStatusChange("Schedule export downloaded.");
+      await exportScheduleFile(exportFormat);
+      onStatusChange(
+        `Schedule export downloaded as ${exportFormat.toUpperCase()}.`,
+      );
     } catch (error) {
       const message = error instanceof Error
         ? `Could not export schedules: ${error.message}`
@@ -362,6 +370,29 @@ export default function ScheduleGenerator({
                   </p>
                 )}
               </div>{" "}
+              <label
+                htmlFor="schedule-export-format"
+                style={{ display: "inline-block", marginTop: 20, marginRight: 8 }}
+              >
+                Export format
+              </label>
+              <select
+                id="schedule-export-format"
+                value={exportFormat}
+                onChange={(event) =>
+                  setExportFormat(event.target.value as ScheduleExportFormat)
+                }
+                disabled={generatedScheduleCount === 0 || exportingSchedule}
+                style={{
+                  padding: "9px 10px",
+                  border: "1px solid #94a3b8",
+                  borderRadius: 6,
+                  fontSize: 14,
+                }}
+              >
+                <option value="json">JSON</option>
+                <option value="csv">CSV</option>
+              </select>{" "}
               <button
                 type="button"
                 onClick={() => void handleExportSchedule()}
@@ -381,7 +412,9 @@ export default function ScheduleGenerator({
                       : "not-allowed",
                 }}
               >
-                {exportingSchedule ? "Exporting..." : "Export Generated Schedules as CSV"}
+                {exportingSchedule
+                  ? "Exporting..."
+                  : "Export Generated Schedules"}
               </button>{" "}
             </section>
           </>);
