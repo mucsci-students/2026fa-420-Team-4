@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import App from "./App";
 import { validateConfig } from "./api";
@@ -8,6 +8,7 @@ import {
   configMenus,
   configTableColumns,
   getConfigTableRows,
+  removeConfigTableRow,
   type ConfigTableRow,
 } from "./configEditorModel";
 import {
@@ -45,18 +46,19 @@ function formatCellDisplay(value: string | undefined): string {
   return value;
 }
 
+/** Summarize time ranges and optional spacing for each day. */
 function formatTimeBlocks(value: unknown): string {
   const days = asObject(value);
   return Object.entries(days)
     .map(([day, blocks]) => {
       const summaries = Array.isArray(blocks)
         ? blocks.map((blockValue) => {
-            const block = asObject(blockValue);
-            const range = `${String(block.start ?? "")}–${String(block.end ?? "")}`;
-            return block.spacing
-              ? `${range} (every ${String(block.spacing)} min)`
-              : range;
-          })
+          const block = asObject(blockValue);
+          const range = `${String(block.start ?? "")}–${String(block.end ?? "")}`;
+          return block.spacing
+            ? `${range} (every ${String(block.spacing)} min)`
+            : range;
+        })
         : [];
       return `${day}: ${summaries.join(", ") || "unavailable"}`;
     })
@@ -119,15 +121,16 @@ function parseEditorJson(value: string, fallback: unknown): unknown {
 const editorDays = ["MON", "TUE", "WED", "THU", "FRI"];
 const preferenceColumns = ["Course Preferences", "Room Preferences", "Lab Preferences"];
 
+/** Remove unnamed faculty preferences before storing a row; leave other sections unchanged. */
 function prepareRowForCommit(menu: string, row: ConfigTableRow): ConfigTableRow {
   if (menu !== "Faculty") return row;
   return Object.fromEntries(Object.entries(row).map(([column, value]) => [
     column,
     preferenceColumns.includes(column) && value !== ""
       ? JSON.stringify(Object.fromEntries(
-          Object.entries(asObject(parseEditorJson(value, {})))
-            .filter(([name]) => name.trim() !== ""),
-        ))
+        Object.entries(asObject(parseEditorJson(value, {})))
+          .filter(([name]) => name.trim() !== ""),
+      ))
       : value,
   ]));
 }
@@ -146,6 +149,59 @@ const listFields: Record<string, string[]> = {
   ],
 };
 
+/** Edit a list as comma-separated text and emit JSON, optionally preserving an empty nullable value. */
+function CommaSeparatedListField({
+  column,
+  value,
+  onChange,
+  autoFocus,
+  allowNullWhenEmpty = false,
+}: {
+  column: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoFocus: boolean;
+  allowNullWhenEmpty?: boolean;
+}) {
+  const [text, setText] = useState(() => {
+    const parsed = parseEditorJson(value, []);
+    return Array.isArray(parsed) ? parsed.map(String).join(", ") : value;
+  });
+
+  return (
+    <input
+      autoFocus={autoFocus}
+      aria-label={column}
+      type="text"
+      placeholder="Separate values with commas"
+      value={text}
+      onChange={(event) => {
+        const nextText = event.target.value;
+        setText(nextText);
+        onChange(
+          allowNullWhenEmpty && nextText.trim() === ""
+            ? ""
+            : JSON.stringify(
+                nextText
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter(Boolean),
+              ),
+        );
+      }}
+      style={{
+        display: "block",
+        width: "100%",
+        marginTop: 4,
+        padding: 8,
+        border: "1px solid #cbd5e1",
+        borderRadius: 4,
+        boxSizing: "border-box",
+      }}
+    />
+  );
+}
+
 const structuredEditorStyle = {
   display: "grid",
   gap: 12,
@@ -161,6 +217,7 @@ const structuredEditorStyle = {
   background: "#f8fafc",
 };
 
+/** Render the appropriate input for a configuration cell and emit serialized changes. */
 function ConfigFieldEditor({
   menu,
   column,
@@ -185,7 +242,7 @@ function ConfigFieldEditor({
       onChange(JSON.stringify(Object.fromEntries(nextEntries)));
     };
 
-     return (
+    return (
       <div style={{ ...structuredEditorStyle, maxHeight: "24vh" }}>
         {entries.map(([name, score], index) => (
           <div
@@ -281,34 +338,13 @@ function ConfigFieldEditor({
   }
 
   if (listFields[menu]?.includes(column)) {
-    const listValue = parseEditorJson(value, []);
-    const textValue = Array.isArray(listValue)
-      ? listValue.map(String).join(", ")
-      : value;
     return (
-      <input
+      <CommaSeparatedListField
+        column={column}
+        value={value}
+        onChange={onChange}
         autoFocus={autoFocus}
-        aria-label={column}
-        type="text"
-        placeholder="Separate values with commas"
-        value={textValue}
-        onChange={(event) =>
-          onChange(JSON.stringify(
-            event.target.value
-              .split(",")
-              .map((item) => item.trim())
-              .filter(Boolean),
-          ))
-        }
-        style={{
-          display: "block",
-          width: "100%",
-          marginTop: 4,
-          padding: 8,
-          border: "1px solid #cbd5e1",
-          borderRadius: 4,
-          boxSizing: "border-box",
-        }}
+        allowNullWhenEmpty={menu === "Courses" && column === "Faculty"}
       />
     );
   }
@@ -603,96 +639,71 @@ function ConfigFieldEditor({
 
 interface ConfigurationEditorProps {
   selectedMenu: string;
+  onStatusChange: (message: string) => void;
 }
 
+/** Render the selected configuration section with row editing, validation, and file saving. */
 export default function ConfigurationEditor({
   selectedMenu,
+  onStatusChange,
 }: ConfigurationEditorProps) {
   const [previousSelectedMenu, setPreviousSelectedMenu] =
     useState(selectedMenu);
-   const [addWindowOpen, setAddWindowOpen] = useState(false);
-    const [newRow, setNewRow] = useState<Record<string, string>>({});
-    const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
-    const [editedRow, setEditedRow] = useState<Record<string, string>>({});
-    const [configRows, setConfigRows] = useState<
+  const [addWindowOpen, setAddWindowOpen] = useState(false);
+  const [newRow, setNewRow] = useState<Record<string, string>>({});
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
+  const [editedRow, setEditedRow] = useState<Record<string, string>>({});
+  const [configRows, setConfigRows] = useState<
     Record<string, ConfigTableRow[]>
   >({});
-    const [originalEditorConfig, setOriginalEditorConfig] = useState<unknown>(null);
-    const [editorFileName, setEditorFileName] = useState("");
-    const [editorDirty, setEditorDirty] = useState(false);
-    const [editorSaveStatus, setEditorSaveStatus] = useState("");
-    const [editorSaveFailed, setEditorSaveFailed] = useState(false);
-    const [editorSaving, setEditorSaving] = useState(false);
-    const [editorDraftStatus, setEditorDraftStatus] = useState("");
-    const [editorDraftErrors, setEditorDraftErrors] = useState<string[]>([]);
-    const [editorDraftChecking, setEditorDraftChecking] = useState(false);
-    const [editorDraftValid, setEditorDraftValid] = useState(false);
-    const [editorAddingRow, setEditorAddingRow] = useState(false);
-    const [editorFileController] = useState(createConfigFileController);
-  if (previousSelectedMenu !== selectedMenu) {
-    setPreviousSelectedMenu(selectedMenu);
-    setEditingRowIndex(null);
-    setEditedRow({});
-    setAddWindowOpen(false);
-    setNewRow({});
-  }
- const handleEditorConfigSelected = (config: unknown) => {
-    setOriginalEditorConfig(config);
-    setConfigRows(getConfigTableRows(config));
-    setEditorDirty(false);
-    setEditorSaveStatus("");
+  const [originalEditorConfig, setOriginalEditorConfig] = useState<unknown>(null);
+  const [editorFileName, setEditorFileName] = useState("");
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [editorSaveStatus, setEditorSaveStatusState] = useState("");
+  const [editorSaveFailed, setEditorSaveFailed] = useState(false);
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [editorDraftStatus, setEditorDraftStatus] = useState("");
+  const [editorDraftErrors, setEditorDraftErrors] = useState<string[]>([]);
+  const [editorDraftChecking, setEditorDraftChecking] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    menu: string;
+    rowIndex: number;
+  } | null>(null);
+  const [editorFileController] = useState(createConfigFileController);
+  const validationRequestId = useRef(0);
+  /** Update the local save status and publish nonempty messages to the shared status bar. */
+  const setEditorSaveStatus = (message: string) => {
+    setEditorSaveStatusState(message);
+    if (message) onStatusChange(message);
+  };
+  /** Clear the previous save message and failure flag after an edit. */
+  const clearEditorValidationStatus = () => {
+    setEditorSaveStatusState("");
     setEditorSaveFailed(false);
-    setEditorDraftStatus("");
-    setEditorDraftErrors([]);
-    setEditorDraftValid(true);
-    setEditingRowIndex(null);
-    setEditedRow({});
-    setAddWindowOpen(false);
-    setNewRow({});
   };
-  const handleChooseEditorFile = async (
-    file: File,
-  ): Promise<OpenedConfigFile> => {
-    await validateConfig(file);
-    const selected = await editorFileController.open(file);
-    setEditorFileName(selected.file.name);
-    return selected;
-  };
-  const handleCreateNewConfig = () => {
-    setEditorFileName(editorFileController.create());
-    setOriginalEditorConfig({});
-    setConfigRows({});
-    setEditorDirty(true);
-    setEditorSaveStatus("");
-    setEditorSaveFailed(false);
-    setEditorDraftStatus("");
-    setEditorDraftErrors([]);
-    setEditorDraftValid(false);
-    setEditingRowIndex(null);
-    setEditedRow({});
-    setAddWindowOpen(false);
-    setNewRow({});
-  };
+  /** Validate draft tables against the baseline configuration and ignore superseded responses. */
   const validateEditorDraft = async (
     draftTables: Record<string, ConfigTableRow[]>,
+    baselineConfig = originalEditorConfig,
   ) => {
-    if (originalEditorConfig === null || !editorFileName) return;
+    if (baselineConfig === null || !editorFileName) return;
 
+    const requestId = ++validationRequestId.current;
     setEditorDraftChecking(true);
-    setEditorDraftValid(false);
     setEditorDraftStatus("Checking changes...");
     setEditorDraftErrors([]);
     try {
-      const draftConfig = applyConfigTableRows(originalEditorConfig, draftTables);
+      const draftConfig = applyConfigTableRows(baselineConfig, draftTables);
       const draftFile = new File(
         [`${JSON.stringify(draftConfig, null, 2)}\n`],
         editorFileName,
         { type: "application/json" },
       );
       await validateConfig(draftFile);
+      if (requestId !== validationRequestId.current) return;
       setEditorDraftStatus("Changes pass validation.");
-      setEditorDraftValid(true);
     } catch (error) {
+      if (requestId !== validationRequestId.current) return;
       let messages = [
         error instanceof Error
           ? error.message
@@ -712,126 +723,90 @@ export default function ConfigurationEditor({
       }
       setEditorDraftStatus("Changes need attention.");
       setEditorDraftErrors(formatConfigErrors(messages));
-      setEditorDraftValid(false);
     } finally {
-      setEditorDraftChecking(false);
+      if (requestId === validationRequestId.current) {
+        setEditorDraftChecking(false);
+      }
     }
   };
-  const getValidationErrors = (error: unknown): string[] | null => {
-    if (
-      !axios.isAxiosError<{
-        detail?: { errors?: string[] } | string;
-      }>(error)
-    ) {
-      return null;
-    }
+  if (previousSelectedMenu !== selectedMenu) {
+    setPreviousSelectedMenu(selectedMenu);
+    setEditingRowIndex(null);
+    setEditedRow({});
+    setAddWindowOpen(false);
+    setNewRow({});
+  }
+  useEffect(() => {
+    if (!deleteTarget) return;
 
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string") return [detail];
-    return detail?.errors ?? null;
+    /** Dismiss the deletion confirmation when Escape is pressed. */
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDeleteTarget(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteTarget]);
+  /** Load configuration rows and reset editing and validation state, invalidating pending checks. */
+  const handleEditorConfigSelected = (config: unknown) => {
+    setOriginalEditorConfig(config);
+    setConfigRows(getConfigTableRows(config));
+    setEditorDirty(false);
+    setEditorSaveStatus("");
+    setEditorSaveFailed(false);
+    validationRequestId.current += 1;
+    setEditorDraftStatus("");
+    setEditorDraftErrors([]);
+    setEditorDraftChecking(false);
+    setEditingRowIndex(null);
+    setEditedRow({});
+    setAddWindowOpen(false);
+    setNewRow({});
   };
-  const compareCandidateValidation = async (
-    draftTables: Record<string, ConfigTableRow[]>,
-  ): Promise<{ newErrors: string[]; candidateErrors: string[] }> => {
-    if (originalEditorConfig === null || !editorFileName) {
-      throw new Error("Create a new configuration or choose a file first.");
-    }
-
-    const toValidationFile = (tables: Record<string, ConfigTableRow[]>) =>
-      new File(
-        [
-          `${JSON.stringify(
-            applyConfigTableRows(originalEditorConfig, tables),
-            null,
-            2,
-          )}\n`,
-        ],
-        editorFileName,
-        { type: "application/json" },
-      );
-
-    let candidateErrors: string[];
-    try {
-      await validateConfig(toValidationFile(draftTables));
-      return { newErrors: [], candidateErrors: [] };
-    } catch (error) {
-      candidateErrors = getValidationErrors(error) ?? [
-        error instanceof Error
-          ? error.message
-          : "Could not validate the new item.",
-      ];
-    }
-
-    let existingErrors: string[];
-    try {
-      await validateConfig(toValidationFile(configRows));
-      existingErrors = [];
-    } catch (error) {
-      const validationErrors = getValidationErrors(error);
-      if (!validationErrors) throw error;
-      existingErrors = validationErrors;
-    }
-
-    const existingErrorCounts = new Map<string, number>();
-    for (const error of existingErrors) {
-      existingErrorCounts.set(error, (existingErrorCounts.get(error) ?? 0) + 1);
-    }
-    const newErrors = candidateErrors.filter((error) => {
-      const count = existingErrorCounts.get(error) ?? 0;
-      if (count === 0) return true;
-      existingErrorCounts.set(error, count - 1);
-      return false;
-    });
-    return { newErrors, candidateErrors };
+  /** Validate and open a configuration file, returning its contents and reporting load progress. */
+  const handleChooseEditorFile = async (
+    file: File,
+  ): Promise<OpenedConfigFile> => {
+    onStatusChange(`Loading ${file.name}...`);
+    await validateConfig(file);
+    const selected = await editorFileController.open(file);
+    setEditorFileName(selected.file.name);
+    onStatusChange(`${file.name} loaded successfully.`);
+    return selected;
   };
-  const handleAddNewRow = async () => {
+  /** Initialize an empty configuration and reset editor state for a new file. */
+  const handleCreateNewConfig = () => {
+    setEditorFileName(editorFileController.create());
+    setOriginalEditorConfig({});
+    setConfigRows({});
+    setEditorDirty(true);
+    setEditorSaveStatus("");
+    setEditorSaveFailed(false);
+    validationRequestId.current += 1;
+    setEditorDraftStatus("");
+    setEditorDraftErrors([]);
+    setEditorDraftChecking(false);
+    setEditingRowIndex(null);
+    setEditedRow({});
+    setAddWindowOpen(false);
+    setNewRow({});
+    onStatusChange("New configuration created.");
+  };
+  /** Append the prepared row, close the add dialog, and validate the updated draft. */
+  const handleAddNewRow = () => {
     const currentRows = configRows[selectedMenu] ?? [];
     const updatedTables = {
       ...configRows,
       [selectedMenu]: [...currentRows, prepareRowForCommit(selectedMenu, newRow)],
     };
-    setEditorAddingRow(true);
-    setEditorDraftChecking(true);
-    setEditorDraftStatus("Checking item...");
-    setEditorDraftErrors([]);
-    try {
-      const { newErrors, candidateErrors } = await compareCandidateValidation(updatedTables);
-      if (newErrors.length > 0) {
-        setEditorDraftStatus("Item has invalid fields.");
-        setEditorDraftErrors(formatConfigErrors(newErrors));
-        setEditorDraftValid(false);
-        return;
-      }
-
-      setConfigRows(updatedTables);
-      setEditorDirty(true);
-      setAddWindowOpen(false);
-      setNewRow({});
-      if (candidateErrors.length === 0) {
-        setEditorDraftStatus("Item added. Changes pass validation.");
-        setEditorDraftErrors([]);
-        setEditorDraftValid(true);
-      } else {
-        setEditorDraftStatus("Item added. Existing configuration issues remain.");
-        setEditorDraftErrors(formatConfigErrors(candidateErrors));
-        setEditorDraftValid(false);
-      }
-    } catch (error) {
-      setEditorDraftStatus("Could not add item.");
-      setEditorDraftErrors(
-        formatConfigErrors([
-          error instanceof Error
-            ? error.message
-            : "Could not validate the new item.",
-        ]),
-      );
-      setEditorDraftValid(false);
-    } finally {
-      setEditorAddingRow(false);
-      setEditorDraftChecking(false);
-    }
+    setConfigRows(updatedTables);
+    setEditorDirty(true);
+    clearEditorValidationStatus();
+    setAddWindowOpen(false);
+    setNewRow({});
+    void validateEditorDraft(updatedTables);
   };
-  const handleApplyEditedRow = async () => {
+  /** Apply the prepared row edit and validate the updated draft when a row is selected. */
+  const handleApplyEditedRow = () => {
     if (editingRowIndex === null) return;
     const updatedTables = {
       ...configRows,
@@ -839,57 +814,21 @@ export default function ConfigurationEditor({
         index === editingRowIndex ? prepareRowForCommit(selectedMenu, editedRow) : row,
       ),
     };
-    setEditorDraftChecking(true);
-    setEditorDraftStatus("Checking edited item...");
-    setEditorDraftErrors([]);
-    try {
-      const { newErrors, candidateErrors } =
-        await compareCandidateValidation(updatedTables);
-      if (newErrors.length > 0) {
-        setEditorDraftStatus("Edited item has invalid fields. Changes were not applied.");
-        setEditorDraftErrors(formatConfigErrors(newErrors));
-        setEditorDraftValid(false);
-        return;
-      }
-
-      setConfigRows(updatedTables);
-      setEditorDirty(true);
-      setEditingRowIndex(null);
-      setEditedRow({});
-      if (candidateErrors.length === 0) {
-        setEditorDraftStatus("Edit applied. Changes pass validation.");
-        setEditorDraftErrors([]);
-        setEditorDraftValid(true);
-      } else {
-        setEditorDraftStatus("Edit applied. Existing configuration issues remain.");
-        setEditorDraftErrors(formatConfigErrors(candidateErrors));
-        setEditorDraftValid(false);
-      }
-    } catch (error) {
-      setEditorDraftStatus("Could not validate edit. Changes were not applied.");
-      setEditorDraftErrors(
-        formatConfigErrors([
-          error instanceof Error
-            ? error.message
-            : "Could not validate the edited item.",
-        ]),
-      );
-      setEditorDraftValid(false);
-    } finally {
-      setEditorDraftChecking(false);
-    }
+    setConfigRows(updatedTables);
+    setEditorDirty(true);
+    clearEditorValidationStatus();
+    setEditingRowIndex(null);
+    setEditedRow({});
+    void validateEditorDraft(updatedTables);
   };
+  /** Validate and download the edited configuration, reporting validation or save failures. */
   const handleSaveEditorConfig = async () => {
     if (originalEditorConfig === null || !editorFileName) {
       setEditorSaveStatus("Create a new configuration or choose an existing file before saving.");
       return;
     }
-    if (editorDraftChecking || !editorDraftValid || editorDraftErrors.length > 0) {
-      setEditorSaveStatus("Fix all configuration issues and wait for validation before saving.");
-      setEditorSaveFailed(true);
-      return;
-    }
-
+    validationRequestId.current += 1;
+    setEditorDraftChecking(false);
     setEditorSaving(true);
     setEditorSaveStatus("Validating configuration...");
     setEditorSaveFailed(false);
@@ -901,6 +840,8 @@ export default function ConfigurationEditor({
         { type: "application/json" },
       );
       await validateConfig(configFile);
+      setEditorDraftStatus("Changes pass validation.");
+      setEditorDraftErrors([]);
       editorFileController.save(updatedConfig);
       setOriginalEditorConfig(updatedConfig);
       setEditorDirty(false);
@@ -924,6 +865,8 @@ export default function ConfigurationEditor({
           messages = detail.errors;
         }
       }
+      setEditorDraftStatus("Changes need attention.");
+      setEditorDraftErrors(formatConfigErrors(messages));
       setEditorSaveStatus(formatConfigErrors(messages).join("\n"));
       setEditorSaveFailed(true);
     } finally {
@@ -931,441 +874,528 @@ export default function ConfigurationEditor({
     }
   };
   return (
-    <div style={{ height: "100%", minHeight: 0, overflow: "hidden" }}>
+    <div style={{ width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
       {/* Configuration Editor */}{" "}
-          {selectedMenu === "Configuration Editor" && (
-            <div
+      {selectedMenu === "Configuration Editor" && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            minHeight: 0,
+            overflow: "hidden",
+            background: "white",
+            border: "1px solid #cbd5e1",
+            borderRadius: 8,
+            padding: 16,
+            boxSizing: "border-box",
+          }}
+        >
+          <App
+            onConfigSelected={handleEditorConfigSelected}
+            onChooseFile={handleChooseEditorFile}
+            onCreateNew={handleCreateNewConfig}
+            onStatusChange={onStatusChange}
+          />{" "}
+        </div>
+      )}{" "}
+      {/* Configuration Sections */}{" "}
+      {configMenus.includes(selectedMenu) && (
+        <section
+          style={{
+            display: editorSaveFailed ? "block" : "flex",
+            flexDirection: "column",
+            height: "100%",
+            minHeight: 0,
+            overflowX: "hidden",
+            overflowY: editorSaveFailed ? "scroll" : "hidden",
+            background: "white",
+            border: "1px solid #cbd5e1",
+            borderRadius: 8,
+            padding: 24,
+            boxSizing: "border-box",
+          }}
+        >
+          {" "}
+          <h1 style={{ marginTop: 0, fontSize: 28 }}>{selectedMenu}</h1>{" "}
+          <p style={{ color: "#64748b" }}>
+            {" "}
+          </p>{" "}
+          {/* Render read-only rows from the selected submenu schema. */}
+          <div style={{ flex: 1, minHeight: 0, overflow: "auto", width: "100%" }}>
+            <table
               style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                minHeight: 0,
-                overflow: "hidden",
-                background: "white",
-                border: "1px solid #cbd5e1",
-                borderRadius: 8,
-                padding: 16,
-                boxSizing: "border-box",
+                width: "100%",
+                minWidth: 900,
+                tableLayout: "fixed",
+                borderCollapse: "collapse",
+                textAlign: "left",
               }}
             >
-              <App
-                onConfigSelected={handleEditorConfigSelected}
-                onChooseFile={handleChooseEditorFile}
-                onCreateNew={handleCreateNewConfig}
-              />{" "}
-            </div>
-          )}{" "}
-          {/* Configuration Sections */}{" "}
-          {configMenus.includes(selectedMenu) && (
-            <section
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                minHeight: 0,
-                overflow: "hidden",
-                background: "white",
-                border: "1px solid #cbd5e1",
-                borderRadius: 8,
-                padding: 24,
-                boxSizing: "border-box",
-              }}
-            >
-              {" "}
-              <h1 style={{ marginTop: 0, fontSize: 28 }}>{selectedMenu}</h1>{" "}
-              <p style={{ color: "#64748b" }}>
-                {" "}
-              </p>{" "}
-              {/* Render read-only rows from the selected submenu schema. */}
-              <div style={{ flex: 1, minHeight: 0, overflow: "auto", width: "100%" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    minWidth: 900,
-                    tableLayout: "fixed",
-                    borderCollapse: "collapse",
-                    textAlign: "left",
-                  }}
-                >
-                  <colgroup>
+              <colgroup>
+                <col style={{ width: 76 }} />
+                {configTableColumns[selectedMenu].map((column) => (
+                  <col
+                    key={column}
+                    style={{ width: Math.max(160, column.length * 12 + 40) }}
+                  />
+                ))}
+                <col style={{ width: 170 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    style={{
+                      padding: 10,
+                      borderBottom: "2px solid #cbd5e1",
+                      borderRight: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      textAlign: "center",
+                    }}
+                  >
+                    #
+                  </th>
+                  {configTableColumns[selectedMenu].map((column) => (
+                    <th
+                      key={column}
+                      scope="col"
+                      style={{
+                        padding: 10,
+                        borderBottom: "2px solid #cbd5e1",
+                        borderRight: "1px solid #e2e8f0",
+                        background: "#f8fafc",
+                        textAlign: "center",
+                      }}
+                    >
+                      {column}
+                    </th>
+                  ))}
+                  <th
+                    scope="col"
+                    style={{
+                      padding: 10,
+                      borderBottom: "2px solid #cbd5e1",
+                      borderLeft: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      textAlign: "center",
+                    }}
+                  >
+                    Actions
+                  </th>
+
+                </tr>
+              </thead>
+              <tbody>
+                {(configRows[selectedMenu] ?? []).map((row, rowIndex) => (
+                  <tr key={`${selectedMenu}-${rowIndex}`} style={{ height: 48 }}>
+                    <td
+                      style={{
+                        height: 48,
+                        padding: 8,
+                        borderBottom: "1px solid #e2e8f0",
+                        textAlign: "center",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {rowIndex + 1}
+                    </td>
                     {configTableColumns[selectedMenu].map((column) => (
-                      <col
+                      <td
                         key={column}
-                        style={{ width: Math.max(160, column.length * 12 + 40) }}
-                      />
-                    ))}
-                    <col style={{ width: 170 }} />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      {configTableColumns[selectedMenu].map((column) => (
-                        <th
-                          key={column}
-                          scope="col"
-                          style={{
-                            padding: 10,
-                            borderBottom: "2px solid #cbd5e1",
-                            borderRight: "1px solid #e2e8f0",
-                            background: "#f8fafc",
-                            textAlign: "center",
-                          }}
-                        >
-                          {column}
-                        </th>
-                      ))}
-                      <th
-                        scope="col"
                         style={{
-                          padding: 10,
-                          borderBottom: "2px solid #cbd5e1",
-                          borderLeft: "1px solid #e2e8f0",
-                          background: "#f8fafc",
+                          height: 48,
+                          padding: 8,
+                          borderBottom: "1px solid #e2e8f0",
+                          overflowWrap: "anywhere",
+                          whiteSpace: "normal",
                           textAlign: "center",
                         }}
                       >
-                        Actions
-                      </th>
-
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(configRows[selectedMenu] ?? []).map((row, rowIndex) => (
-                      <tr key={`${selectedMenu}-${rowIndex}`} style={{ height: 48 }}>
-                        {configTableColumns[selectedMenu].map((column) => (
-                          <td
-                            key={column}
-                            style={{
-                              height: 48,
-                              padding: 8,
-                              borderBottom: "1px solid #e2e8f0",
-                              overflowWrap: "anywhere",
-                              whiteSpace: "normal",
-                              textAlign: "center",
-                            }}
-                          >
-                            {formatConfigCell(selectedMenu, column, row[column])}
-                          </td>
-                        ))}
-                        <td
-                          style={{
-                            position: "relative",
-                            height: 48,
-                            padding: 8,
-                            borderBottom: "1px solid #e2e8f0",
-                            textAlign: "center",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          <button
-                            type="button"
-                            aria-label={`Edit ${selectedMenu} row ${rowIndex + 1}`}
-                            onClick={() => {
-                              setEditedRow({ ...row });
-                              setEditingRowIndex(rowIndex);
-                            }}
-                            style={{
-                              padding: "7px 8px",
-                              border: "1px solid #cbd5e1",
-                              borderRadius: 4,
-                              background: "white",
-                              color: "#0f172a",
-                              fontSize: 12,
-                              cursor: "pointer",
-                              marginRight: 4,
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Delete ${selectedMenu} row ${rowIndex + 1}`}
-                            onClick={() => {
-                              const updatedTables = {
-                                ...configRows,
-                                [selectedMenu]: (configRows[selectedMenu] ?? []).filter(
-                                  (_, index) => index !== rowIndex,
-                                ),
-                              };
-                              setConfigRows(updatedTables);
-                              setEditorDirty(true);
-                              setEditingRowIndex(null);
-                              setEditedRow({});
-                              void validateEditorDraft(updatedTables);
-                            }}
-                            style={{
-                              padding: "7px 8px",
-                              border: "1px solid #cbd5e1",
-                              borderRadius: 4,
-                              background: "white",
-                              color: "#0f172a",
-                              fontSize: 12,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
+                        {formatConfigCell(selectedMenu, column, row[column])}
+                      </td>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-              {editingRowIndex === null && !addWindowOpen && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    flexShrink: 0,
-                    marginTop: 12,
-                    padding: "10px 12px",
-                    background: "#d7d7d7",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 8,
-                    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
-                  }}
-                >
-                  <span style={{ color: "#475569", fontSize: 13 }}>
-                    Add to {selectedMenu}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewRow(Object.fromEntries(configTableColumns[selectedMenu].map((column) => [column, ""])));
-                      setAddWindowOpen(true);
-                    }}
-                    style={{
-                      padding: "6px 10px",
-                      border: 0,
-                      borderRadius: 6,
-                      background: "#334155",
-                      color: "#f8fafc",
-                      fontSize: 13,
-                      fontWeight: "bold",
-                      cursor: "pointer",
-                    }}
-                  >
-                    + Add
-                  </button>
-                </div>
-              )}
-              {editingRowIndex !== null && (
-                <div
-                  role="region"
-                  aria-label={`Edit ${selectedMenu} row`}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    flexWrap: "wrap",
-                    gap: 12,
-                    flexShrink: 0,
-                    maxHeight: "45%",
-                    marginTop: 12,
-                    padding: 16,
-                    background: "white",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 8,
-                    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
-                    overflow: "auto",
-                  }}
-                >
-                  {configTableColumns[selectedMenu].map((column) => (
-                    <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
-                      {column}
-                      <ConfigFieldEditor
-                        menu={selectedMenu}
-                        column={column}
-                        value={editedRow[column] ?? ""}
-                        onChange={(value) =>
-                          setEditedRow((current) => ({ ...current, [column]: value }))
-                        }
-                      />
-                    </label>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingRowIndex(null);
-                      setEditedRow({});
-                    }}
-                    style={{ padding: "8px 12px", flexShrink: 0 }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={editorDraftChecking}
-                    onClick={() => void handleApplyEditedRow()}
-                    style={{ padding: "8px 12px", background: "#334155", color: "white", border: 0, borderRadius: 6, flexShrink: 0 }}
-                  >
-                    {editorDraftChecking ? "Checking..." : "Apply"}
-                  </button>
-                </div>
-              )}
-              {addWindowOpen && (
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void handleAddNewRow();
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    flexWrap: "wrap",
-                    gap: 12,
-                    flexShrink: 0,
-                    maxHeight: "45%",
-                    marginTop: 12,
-                    padding: 16,
-                    background: "#d7d7d7",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: 8,
-                    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
-                    overflow: "auto",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
-                    <span style={{ fontWeight: "bold", color: "#0f172a" }}>Add {selectedMenu}</span>
-                  </div>
-                  {configTableColumns[selectedMenu].map((column) => (
-                    <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
-                      {column}
-                      <ConfigFieldEditor
-                        menu={selectedMenu}
-                        column={column}
-                        value={newRow[column] ?? ""}
-                        autoFocus={column === configTableColumns[selectedMenu][0]}
-                        onChange={(value) =>
-                          setNewRow((current) => ({ ...current, [column]: value }))
-                        }
-                      />
-                    </label>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddWindowOpen(false);
-                      setNewRow({});
-                    }}
-                    style={{ padding: "8px 12px", flexShrink: 0 }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={editorAddingRow || editorDraftChecking}
-                    style={{
-                      padding: "8px 12px",
-                      background: "#334155",
-                      color: "white",
-                      border: 0,
-                      borderRadius: 6,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {editorAddingRow ? "Checking..." : "Add"}
-                  </button>
-                </form>
-              )}
-              {(editorDraftStatus || editorDraftErrors.length > 0) && (
-                <div
-                  role={editorDraftErrors.length > 0 ? "alert" : "status"}
-                  style={{
-                    marginTop: 12,
-                    padding: "10px 14px",
-                    color: editorDraftErrors.length > 0 ? "#991b1b" : "#166534",
-                    background:
-                      editorDraftErrors.length > 0 ? "#fef2f2" : "#f0fdf4",
-                    border: `1px solid ${
-                      editorDraftErrors.length > 0 ? "#fecaca" : "#bbf7d0"
-                    }`,
-                    borderRadius: 6,
-                  }}
-                >
-                  <strong>{editorDraftStatus}</strong>
-                  {editorDraftErrors.length > 0 && (
-                    <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
-                      {editorDraftErrors.map((error, index) => (
-                        <li key={index}>{error}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  flexShrink: 0,
-                  marginTop: 12,
-                  paddingTop: 12,
-                  borderTop: "1px solid #cbd5e1",
-                }}
-              >
-                <div>
-                  {editorFileName && (
-                    <span style={{ color: "#475569", fontSize: 13 }}>
-                      Editing {editorFileName}
-                    </span>
-                  )}
-                  {editorSaveStatus && (
-                    <p
-                      role={editorSaveFailed ? "alert" : "status"}
+                    <td
                       style={{
-                        margin: "4px 0 0",
-                        color: editorSaveFailed ? "#b91c1c" : "#475569",
-                        fontSize: 13,
-                        whiteSpace: "pre-line",
+                        position: "relative",
+                        height: 48,
+                        padding: 8,
+                        borderBottom: "1px solid #e2e8f0",
+                        textAlign: "center",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      {editorSaveStatus}
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void handleSaveEditorConfig()}
-                  disabled={
-                    !editorDirty ||
-                    !editorFileName ||
-                    editorSaving ||
-                    editorDraftChecking ||
-                    !editorDraftValid ||
-                    editorDraftErrors.length > 0 ||
-                    editingRowIndex !== null ||
-                    addWindowOpen
-                  }
+                      <button
+                        type="button"
+                        aria-label={`Edit ${selectedMenu} row ${rowIndex + 1}`}
+                        onClick={() => {
+                          setEditedRow({ ...row });
+                          setEditingRowIndex(rowIndex);
+                        }}
+                        style={{
+                          padding: "7px 8px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          background: "white",
+                          color: "#0f172a",
+                          fontSize: 12,
+                          cursor: "pointer",
+                          marginRight: 4,
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Delete ${selectedMenu} row ${rowIndex + 1}`}
+                        onClick={() => setDeleteTarget({
+                          menu: selectedMenu,
+                          rowIndex,
+                        })}
+                        style={{
+                          padding: "7px 8px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          background: "white",
+                          color: "#0f172a",
+                          fontSize: 12,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {editingRowIndex === null && !addWindowOpen && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexShrink: 0,
+                marginTop: 12,
+                padding: "10px 12px",
+                background: "#d7d7d7",
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
+              }}
+            >
+              <span style={{ color: "#475569", fontSize: 13 }}>
+                Add to {selectedMenu}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewRow(Object.fromEntries(configTableColumns[selectedMenu].map((column) => [column, ""])));
+                  setAddWindowOpen(true);
+                }}
+                style={{
+                  padding: "6px 10px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: "#334155",
+                  color: "#f8fafc",
+                  fontSize: 13,
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                + Add
+              </button>
+            </div>
+          )}
+          {editingRowIndex !== null && (
+            <div
+              role="region"
+              aria-label={`Edit ${selectedMenu} row`}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 12,
+                flexShrink: 0,
+                maxHeight: "45%",
+                marginTop: 12,
+                padding: 16,
+                background: "white",
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
+                overflow: "auto",
+              }}
+            >
+              {configTableColumns[selectedMenu].map((column) => (
+                <label key={`${editingRowIndex}-${column}`} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
+                  {column}
+                  <ConfigFieldEditor
+                    menu={selectedMenu}
+                    column={column}
+                    value={editedRow[column] ?? ""}
+                    onChange={(value) =>
+                      setEditedRow((current) => ({ ...current, [column]: value }))
+                    }
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingRowIndex(null);
+                  setEditedRow({});
+                }}
+                style={{ padding: "8px 12px", flexShrink: 0 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleApplyEditedRow()}
+                style={{ padding: "8px 12px", background: "#334155", color: "white", border: 0, borderRadius: 6, flexShrink: 0 }}
+              >
+                Apply
+              </button>
+            </div>
+          )}
+          {addWindowOpen && (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleAddNewRow();
+              }}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 12,
+                flexShrink: 0,
+                maxHeight: "45%",
+                marginTop: 12,
+                padding: 16,
+                background: "#d7d7d7",
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
+                overflow: "auto",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+                <span style={{ fontWeight: "bold", color: "#0f172a" }}>Add {selectedMenu}</span>
+              </div>
+              {configTableColumns[selectedMenu].map((column) => (
+                <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
+                  {column}
+                  <ConfigFieldEditor
+                    menu={selectedMenu}
+                    column={column}
+                    value={newRow[column] ?? ""}
+                    autoFocus={column === configTableColumns[selectedMenu][0]}
+                    onChange={(value) =>
+                      setNewRow((current) => ({ ...current, [column]: value }))
+                    }
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setAddWindowOpen(false);
+                  setNewRow({});
+                }}
+                style={{ padding: "8px 12px", flexShrink: 0 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={{
+                  padding: "8px 12px",
+                  background: "#334155",
+                  color: "white",
+                  border: 0,
+                  borderRadius: 6,
+                  flexShrink: 0,
+                }}
+              >
+                Add
+              </button>
+            </form>
+          )}
+          {(editorDraftChecking ||
+            editorDraftStatus ||
+            editorDraftErrors.length > 0) && (
+            <div
+              className={
+                editorDraftErrors.length > 0
+                  ? "retro-validation-errors"
+                  : undefined
+              }
+              role={editorDraftErrors.length > 0 ? "alert" : "status"}
+              style={{
+                marginTop: 12,
+                padding: "10px 14px",
+                color: editorDraftErrors.length > 0 ? "#991b1b" : "#166534",
+                background:
+                  editorDraftErrors.length > 0 ? "#fef2f2" : "#f0fdf4",
+                border: `1px solid ${
+                  editorDraftErrors.length > 0 ? "#fecaca" : "#bbf7d0"
+                }`,
+                borderRadius: 6,
+              }}
+            >
+              <strong>
+                {editorDraftChecking ? "Checking changes..." : editorDraftStatus}
+              </strong>
+              {editorDraftErrors.length > 0 && (
+                <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
+                  {editorDraftErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              )}
+              {editorDraftErrors.length > 0 && (
+                <p style={{ margin: "8px 0 0" }}>
+                  You can continue editing, but fix these issues before saving.
+                </p>
+              )}
+            </div>
+          )}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexShrink: 0,
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: "1px solid #cbd5e1",
+            }}
+          >
+            <div>
+              {editorFileName && (
+                <span style={{ color: "#475569", fontSize: 13 }}>
+                  Editing {editorFileName}
+                </span>
+              )}
+              {editorSaveStatus && (
+                <p
+                  role={editorSaveFailed ? "alert" : "status"}
                   style={{
-                    padding: "9px 14px",
-                    border: 0,
-                    borderRadius: 6,
-                    background:
-                      editorDirty &&
-                      editorFileName &&
-                      editorDraftValid &&
-                      !editorDraftChecking &&
-                      editorDraftErrors.length === 0
-                        ? "#334155"
-                        : "#94a3b8",
-                    color: "white",
-                    fontWeight: "bold",
-                    cursor:
-                      editorDirty &&
-                      editorFileName &&
-                      editorDraftValid &&
-                      !editorDraftChecking &&
-                      editorDraftErrors.length === 0
-                        ? "pointer"
-                        : "not-allowed",
+                    margin: "4px 0 0",
+                    color: editorSaveFailed ? "#b91c1c" : "#475569",
+                    fontSize: 13,
+                    whiteSpace: "pre-line",
                   }}
                 >
-                  {editorSaving ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </section>
-          )}{" "}
+                  {editorSaveStatus}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleSaveEditorConfig()}
+              disabled={
+                !editorDirty ||
+                !editorFileName ||
+                editorSaving ||
+                editorDraftChecking ||
+                editingRowIndex !== null ||
+                addWindowOpen
+              }
+              style={{
+                padding: "9px 14px",
+                border: 0,
+                borderRadius: 6,
+                background:
+                  editorDirty &&
+                    editorFileName &&
+                    !editorSaving &&
+                    !editorDraftChecking &&
+                    editingRowIndex === null &&
+                    !addWindowOpen
+                    ? "#334155"
+                    : "#94a3b8",
+                color: "white",
+                fontWeight: "bold",
+                cursor:
+                  editorDirty &&
+                    editorFileName &&
+                    !editorSaving &&
+                    !editorDraftChecking &&
+                    editingRowIndex === null &&
+                    !addWindowOpen
+                    ? "pointer"
+                    : "not-allowed",
+              }}
+            >
+              {editorSaving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+          {deleteTarget && (
+            <div className="retro-dialog-backdrop">
+              <section
+                aria-labelledby="delete-confirmation-title"
+                aria-modal="true"
+                className="retro-dialog"
+                role="alertdialog"
+              >
+                <header className="retro-dialog-titlebar">
+                  Confirm Delete
+                </header>
+                <div className="retro-dialog-content">
+                  <p id="delete-confirmation-title">
+                    Delete {deleteTarget.menu} item {deleteTarget.rowIndex + 1}?
+                  </p>
+                  <div className="retro-dialog-actions">
+                    <button
+                      autoFocus
+                      type="button"
+                      onClick={() => setDeleteTarget(null)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const { menu, rowIndex } = deleteTarget;
+                        const updatedOriginalConfig = removeConfigTableRow(
+                          originalEditorConfig,
+                          menu,
+                          rowIndex,
+                        );
+                        const updatedTables = {
+                          ...configRows,
+                          [menu]: (configRows[menu] ?? []).filter(
+                            (_, index) => index !== rowIndex,
+                          ),
+                        };
+                        setOriginalEditorConfig(updatedOriginalConfig);
+                        setConfigRows(updatedTables);
+                        setEditorDirty(true);
+                        clearEditorValidationStatus();
+                        void validateEditorDraft(
+                          updatedTables,
+                          updatedOriginalConfig,
+                        );
+                        setEditingRowIndex(null);
+                        setEditedRow({});
+                        setDeleteTarget(null);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+        </section>
+      )}{" "}
     </div>
   );
 }
