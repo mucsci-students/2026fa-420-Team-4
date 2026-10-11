@@ -1,0 +1,47 @@
+# Python virtual environments and bytecode
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# Test, coverage, and tool caches
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+coverage/
+htmlcov/
+test-results/
+playwright-report/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Frontend dependencies and generated output
+node_modules/
+dist/
+dist-ssr/
+build/
+
+# Logs and local development files
+*.log
+*.local
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+
+# Secrets and environment-specific settings
+.env
+.env.*
+.envrc
+.secrets/
+!.env.example
+!.env.sample
+!.env.template
