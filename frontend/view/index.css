@@ -1,5 +1,5 @@
 :root {
-  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-family: "MS Sans Serif", Tahoma, Arial, sans-serif;
   color: #000;
   background: #008080;
   font-synthesis: none;
@@ -97,7 +97,7 @@ h2,
 h3,
 h4 {
   color: #000;
-  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif;
+  font-family: "MS Sans Serif", Tahoma, Arial, sans-serif;
   font-weight: bold;
   letter-spacing: normal;
 }
@@ -144,7 +144,7 @@ a {
   padding: 3px 4px 3px 6px;
   color: #fff;
   background: #000080;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
 }
 
@@ -296,7 +296,7 @@ a {
   border-color: #fff #404040 #404040 #fff !important;
   border-radius: 0 !important;
   box-shadow: 1px 1px 0 #000 !important;
-  font-family: Tahoma, "MS Sans Serif", Arial, sans-serif !important;
+  font-family: "MS Sans Serif", Tahoma, Arial, sans-serif !important;
 }
 
 .retro-window main button:active:not(:disabled) {

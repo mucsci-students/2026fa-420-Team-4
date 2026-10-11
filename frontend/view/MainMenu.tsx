@@ -22,13 +22,13 @@ export default function MainMenu() {
   const [selectedEditorSection, setSelectedEditorSection] = useState(
     "Configuration Editor",
   );
+  const [statusMessage, setStatusMessage] = useState("Ready.");
 
   return (
     <div className="retro-desktop">
       <div className="retro-window">
         <header className="retro-titlebar">
           <div className="retro-title">
-            <span className="retro-app-icon" aria-hidden="true">S</span>
             <span>MU Scheduler</span>
           </div>
           <div className="retro-window-controls" aria-hidden="true">
@@ -106,7 +106,10 @@ export default function MainMenu() {
               minHeight: 0,
             }}
           >
-            <ConfigurationEditor selectedMenu={selectedEditorSection} />
+            <ConfigurationEditor
+              selectedMenu={selectedEditorSection}
+              onStatusChange={setStatusMessage}
+            />
           </div>
           <div
             style={{
@@ -115,7 +118,7 @@ export default function MainMenu() {
               minHeight: 0,
             }}
           >
-            <ScheduleGenerator />
+            <ScheduleGenerator onStatusChange={setStatusMessage} />
           </div>
           <div
             style={{
@@ -129,8 +132,9 @@ export default function MainMenu() {
         </main>
       </div>
         <footer className="retro-statusbar">
-          <span className="retro-status-cell">Ready</span>
-          <span>Schedule management</span>
+          <span className="retro-status-cell" role="status" aria-live="polite">
+            {statusMessage}
+          </span>
         </footer>
       </div>
     </div>

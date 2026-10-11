@@ -8,12 +8,14 @@ interface AppProps {
   onConfigSelected: (config: unknown) => void;
   onChooseFile: (file: File) => Promise<OpenedConfigFile>;
   onCreateNew: () => void;
+  onStatusChange: (message: string) => void;
 }
 
 export function App({
   onConfigSelected,
   onChooseFile,
   onCreateNew,
+  onStatusChange,
 }: AppProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string>('');
@@ -23,6 +25,7 @@ export function App({
     if (!selectedFile) return;
     setErrors([]);
     setStatus('Loading configuration file...');
+    onStatusChange('Loading configuration file...');
 
     try {
       const selected = await onChooseFile(selectedFile);
@@ -30,8 +33,10 @@ export function App({
       setStatus(
         `Loaded ${selected.file.name} into the editor. "Save Changes" will download the edited configuration with the same filename.`,
       );
+      onStatusChange(`${selected.file.name} loaded successfully.`);
     } catch (error) {
       setStatus('Could not open configuration file.');
+      onStatusChange('Could not open configuration file.');
       if (
         axios.isAxiosError<{
           detail?: { errors?: string[] } | string;
@@ -63,6 +68,7 @@ export function App({
             onClick={() => {
               onCreateNew();
               setStatus('Success: New configuration created. Save Changes downloads it as new-config.json.');
+              onStatusChange('New configuration created.');
               setErrors([]);
             }}
           >

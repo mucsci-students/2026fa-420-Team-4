@@ -17,7 +17,11 @@ const optimizerFlagOptions = [
   { value: "pack_labs", label: "Pack Labs" },
 ];
 
-export default function ScheduleGenerator() {
+export default function ScheduleGenerator({
+  onStatusChange,
+}: {
+  onStatusChange: (message: string) => void;
+}) {
   const generationConfigInput = useRef<HTMLInputElement>(null);
   const [generationLimit, setGenerationLimit] = useState(
     DEFAULT_GENERATION_LIMIT,
@@ -52,6 +56,7 @@ export default function ScheduleGenerator() {
     setConfigLoading(true);
     setConfigErrors([]);
     setConfigStatus("Reading and loading configuration...");
+    onStatusChange("Reading and loading configuration...");
     try {
       const settings = await generationSettingsController.open(file);
       await uploadConfig(generationSettingsController.toFile());
@@ -59,10 +64,12 @@ export default function ScheduleGenerator() {
       setGenerationLimit(settings.limit);
       setOptimizerFlags(settings.optimizer_flags);
       setConfigStatus(`${file.name} loaded successfully.`);
+      onStatusChange(`${file.name} loaded successfully.`);
     } catch (error) {
       generationSettingsController.clear();
       setConfigFile(null);
       setConfigStatus("Could not load configuration.");
+      onStatusChange("Could not load configuration.");
       if (
         axios.isAxiosError<{
           detail?: { errors?: string[] } | string;
@@ -87,6 +94,7 @@ export default function ScheduleGenerator() {
     setGeneratingSchedules(true);
     setGenerationError("");
     setGenerationStatus("Generating schedules...");
+    onStatusChange("Generating schedules...");
     try {
       if (configFile) {
         await uploadConfig(generationSettingsController.toFile());
@@ -94,11 +102,17 @@ export default function ScheduleGenerator() {
       const result = await runGenerator();
       setGeneratedScheduleCount(result.count);
       setGenerationStatus(`Generated ${result.count} schedule(s).`);
+      onStatusChange(`Generated ${result.count} schedule(s).`);
     } catch (error) {
       setGeneratedScheduleCount(0);
       setGenerationStatus("Schedule generation failed.");
       setGenerationError(
         error instanceof Error ? error.message : "Could not generate schedules.",
+      );
+      onStatusChange(
+        error instanceof Error
+          ? `Schedule generation failed: ${error.message}`
+          : "Schedule generation failed.",
       );
     } finally {
       setGeneratingSchedules(false);
@@ -107,12 +121,16 @@ export default function ScheduleGenerator() {
   const handleExportSchedule = async () => {
     setExportingSchedule(true);
     setGenerationError("");
+    onStatusChange("Exporting schedules...");
     try {
       await exportScheduleCsvFile();
+      onStatusChange("Schedule export downloaded.");
     } catch (error) {
-      setGenerationError(
-        error instanceof Error ? error.message : "Could not export schedules.",
-      );
+      const message = error instanceof Error
+        ? `Could not export schedules: ${error.message}`
+        : "Could not export schedules.";
+      setGenerationError(message);
+      onStatusChange(message);
     } finally {
       setExportingSchedule(false);
     }

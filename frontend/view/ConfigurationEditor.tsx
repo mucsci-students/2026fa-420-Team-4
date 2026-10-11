@@ -603,10 +603,12 @@ function ConfigFieldEditor({
 
 interface ConfigurationEditorProps {
   selectedMenu: string;
+  onStatusChange: (message: string) => void;
 }
 
 export default function ConfigurationEditor({
   selectedMenu,
+  onStatusChange,
 }: ConfigurationEditorProps) {
   const [previousSelectedMenu, setPreviousSelectedMenu] =
     useState(selectedMenu);
@@ -620,15 +622,23 @@ export default function ConfigurationEditor({
     const [originalEditorConfig, setOriginalEditorConfig] = useState<unknown>(null);
     const [editorFileName, setEditorFileName] = useState("");
     const [editorDirty, setEditorDirty] = useState(false);
-    const [editorSaveStatus, setEditorSaveStatus] = useState("");
+    const [editorSaveStatus, setEditorSaveStatusState] = useState("");
     const [editorSaveFailed, setEditorSaveFailed] = useState(false);
     const [editorSaving, setEditorSaving] = useState(false);
-    const [editorDraftStatus, setEditorDraftStatus] = useState("");
+    const [editorDraftStatus, setEditorDraftStatusState] = useState("");
     const [editorDraftErrors, setEditorDraftErrors] = useState<string[]>([]);
     const [editorDraftChecking, setEditorDraftChecking] = useState(false);
     const [editorDraftValid, setEditorDraftValid] = useState(false);
     const [editorAddingRow, setEditorAddingRow] = useState(false);
     const [editorFileController] = useState(createConfigFileController);
+  const setEditorSaveStatus = (message: string) => {
+    setEditorSaveStatusState(message);
+    if (message) onStatusChange(message);
+  };
+  const setEditorDraftStatus = (message: string) => {
+    setEditorDraftStatusState(message);
+    if (message) onStatusChange(message);
+  };
   if (previousSelectedMenu !== selectedMenu) {
     setPreviousSelectedMenu(selectedMenu);
     setEditingRowIndex(null);
@@ -653,9 +663,11 @@ export default function ConfigurationEditor({
   const handleChooseEditorFile = async (
     file: File,
   ): Promise<OpenedConfigFile> => {
+    onStatusChange(`Loading ${file.name}...`);
     await validateConfig(file);
     const selected = await editorFileController.open(file);
     setEditorFileName(selected.file.name);
+    onStatusChange(`${file.name} loaded successfully.`);
     return selected;
   };
   const handleCreateNewConfig = () => {
@@ -672,6 +684,7 @@ export default function ConfigurationEditor({
     setEditedRow({});
     setAddWindowOpen(false);
     setNewRow({});
+    onStatusChange("New configuration created.");
   };
   const validateEditorDraft = async (
     draftTables: Record<string, ConfigTableRow[]>,
@@ -952,6 +965,7 @@ export default function ConfigurationEditor({
                 onConfigSelected={handleEditorConfigSelected}
                 onChooseFile={handleChooseEditorFile}
                 onCreateNew={handleCreateNewConfig}
+                onStatusChange={onStatusChange}
               />{" "}
             </div>
           )}{" "}
