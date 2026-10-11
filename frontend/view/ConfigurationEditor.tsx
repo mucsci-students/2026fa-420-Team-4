@@ -152,11 +152,13 @@ function CommaSeparatedListField({
   value,
   onChange,
   autoFocus,
+  allowNullWhenEmpty = false,
 }: {
   column: string;
   value: string;
   onChange: (value: string) => void;
   autoFocus: boolean;
+  allowNullWhenEmpty?: boolean;
 }) {
   const [text, setText] = useState(() => {
     const parsed = parseEditorJson(value, []);
@@ -173,12 +175,16 @@ function CommaSeparatedListField({
       onChange={(event) => {
         const nextText = event.target.value;
         setText(nextText);
-        onChange(JSON.stringify(
-          nextText
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
-        ));
+        onChange(
+          allowNullWhenEmpty && nextText.trim() === ""
+            ? ""
+            : JSON.stringify(
+                nextText
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter(Boolean),
+              ),
+        );
       }}
       style={{
         display: "block",
@@ -334,6 +340,7 @@ function ConfigFieldEditor({
         value={value}
         onChange={onChange}
         autoFocus={autoFocus}
+        allowNullWhenEmpty={menu === "Courses" && column === "Faculty"}
       />
     );
   }
@@ -749,6 +756,7 @@ export default function ConfigurationEditor({
     file: File,
   ): Promise<OpenedConfigFile> => {
     onStatusChange(`Loading ${file.name}...`);
+    await validateConfig(file);
     const selected = await editorFileController.open(file);
     setEditorFileName(selected.file.name);
     onStatusChange(`${file.name} loaded successfully.`);
@@ -880,11 +888,12 @@ export default function ConfigurationEditor({
       {configMenus.includes(selectedMenu) && (
         <section
           style={{
-            display: "flex",
+            display: editorSaveFailed ? "block" : "flex",
             flexDirection: "column",
             height: "100%",
             minHeight: 0,
-            overflow: "hidden",
+            overflowX: "hidden",
+            overflowY: editorSaveFailed ? "scroll" : "hidden",
             background: "white",
             border: "1px solid #cbd5e1",
             borderRadius: 8,

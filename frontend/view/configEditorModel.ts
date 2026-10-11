@@ -111,6 +111,10 @@ const optionalFields: Record<string, string[]> = {
   "Class Patterns": ["Disabled", "Start Time"],
 };
 
+const nullableFields: Record<string, string[]> = {
+  Courses: ["Faculty"],
+};
+
 export function asObject(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -210,7 +214,9 @@ function toConfigObjects(
     for (const column of configTableColumns[menu]) {
       const key = column.toLowerCase().replaceAll(" ", "_");
       const value = row[column] ?? "";
-      if (
+      if (nullableFields[menu]?.includes(column) && value === "") {
+        output[key] = null;
+      } else if (
         optionalFields[menu]?.includes(column) &&
         (value === "" || value === null)
       ) {
