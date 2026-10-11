@@ -1,0 +1,253 @@
+{
+    "config": {
+        "rooms": [
+            {
+                "name": "Room A",
+                "capacity": 40,
+                "features": [
+                    "accessible",
+                    "projector"
+                ],
+                "times": {
+                    "MON": [
+                        "08:00-17:00"
+                    ],
+                    "WED": [
+                        "08:00-17:00"
+                    ]
+                }
+            },
+            {
+                "name": "Room B",
+                "capacity": 28
+            }
+        ],
+        "labs": [
+            {
+                "name": "Lab 1",
+                "capacity": 24,
+                "features": [
+                    "gpu"
+                ]
+            }
+        ],
+        "courses": [
+            {
+                "course_id": "CS101",
+                "section_id": "A",
+                "credits": 4,
+                "capacity": 24,
+                "modality": "hybrid",
+                "room": [
+                    "Room A",
+                    "Room B"
+                ],
+                "lab": [
+                    "Lab 1"
+                ],
+                "required_room_features": [
+                    "accessible"
+                ],
+                "required_lab_features": [
+                    "gpu"
+                ],
+                "reserve_room_during_lab": false,
+                "conflicts": [
+                    "CS102"
+                ],
+                "faculty": [
+                    "Dr. Smith",
+                    "Dr. Johnson"
+                ]
+            },
+            {
+                "course_id": "CS102",
+                "section_id": "A",
+                "credits": 3,
+                "capacity": 28,
+                "modality": "in_person",
+                "room": [
+                    "Room A",
+                    "Room B"
+                ],
+                "lab": [],
+                "required_room_features": [],
+                "required_lab_features": [],
+                "reserve_room_during_lab": true,
+                "conflicts": [
+                    "CS101"
+                ],
+                "faculty": [
+                    "Dr. Smith",
+                    "Dr. Johnson"
+                ]
+            }
+        ],
+        "faculty": [
+            {
+                "name": "Dr. Smith",
+                "maximum_credits": 12,
+                "minimum_credits": 6,
+                "unique_course_limit": 3,
+                "maximum_days": 4,
+                "mandatory_days": [
+                    "MON",
+                    "WED"
+                ],
+                "times": {
+                    "MON": [
+                        "09:00-17:00"
+                    ],
+                    "TUE": [
+                        "09:00-17:00"
+                    ],
+                    "WED": [
+                        "09:00-17:00"
+                    ],
+                    "THU": [
+                        "09:00-17:00"
+                    ],
+                    "FRI": [
+                        "09:00-17:00"
+                    ]
+                },
+                "course_preferences": {
+                    "CS101": 10,
+                    "CS102": 5
+                },
+                "room_preferences": {
+                    "Room A": 10,
+                    "Room B": 7
+                },
+                "lab_preferences": {
+                    "Lab 1": 8
+                }
+            },
+            {
+                "name": "Dr. Johnson",
+                "maximum_credits": 12,
+                "minimum_credits": 3,
+                "unique_course_limit": 3,
+                "maximum_days": 5,
+                "mandatory_days": [],
+                "times": {
+                    "MON": [
+                        "09:00-17:00"
+                    ],
+                    "TUE": [
+                        "09:00-17:00"
+                    ],
+                    "WED": [
+                        "09:00-17:00"
+                    ],
+                    "THU": [
+                        "09:00-17:00"
+                    ],
+                    "FRI": [
+                        "09:00-17:00"
+                    ]
+                },
+                "course_preferences": {
+                    "CS101": 5,
+                    "CS102": 10
+                },
+                "room_preferences": {
+                    "Room A": 7,
+                    "Room B": 10
+                },
+                "lab_preferences": {
+                    "Lab 1": 6
+                }
+            }
+        ]
+    },
+    "time_slot_config": {
+        "times": {
+            "MON": [
+                {
+                    "start": "09:00",
+                    "spacing": 60,
+                    "end": "17:00"
+                }
+            ],
+            "TUE": [
+                {
+                    "start": "09:00",
+                    "spacing": 60,
+                    "end": "17:00"
+                }
+            ],
+            "WED": [
+                {
+                    "start": "09:00",
+                    "spacing": 60,
+                    "end": "17:00"
+                }
+            ],
+            "THU": [
+                {
+                    "start": "09:00",
+                    "spacing": 60,
+                    "end": "17:00"
+                }
+            ],
+            "FRI": [
+                {
+                    "start": "09:00",
+                    "spacing": 60,
+                    "end": "17:00"
+                }
+            ]
+        },
+        "classes": [
+            {
+                "credits": 4,
+                "meetings": [
+                    {
+                        "day": "MON",
+                        "duration": 110,
+                        "lab": true,
+                        "delivery": "in_person"
+                    },
+                    {
+                        "day": "WED",
+                        "start_time": "10:00",
+                        "duration": 110,
+                        "lab": false,
+                        "delivery": "online"
+                    }
+                ],
+                "start_time": "09:00",
+                "disabled": false
+            },
+            {
+                "credits": 3,
+                "meetings": [
+                    {
+                        "day": "TUE",
+                        "duration": 110,
+                        "lab": false,
+                        "delivery": "in_person"
+                    },
+                    {
+                        "day": "THU",
+                        "duration": 110,
+                        "lab": false,
+                        "delivery": "in_person"
+                    }
+                ],
+                "start_time": "09:00",
+                "disabled": false
+            }
+        ],
+        "max_time_gap": 30,
+        "min_time_overlap": 45
+    },
+    "optimizer_flags": [
+        "faculty_course",
+        "faculty_room",
+        "pack_rooms",
+        "same_room"
+    ],
+    "limit": 10
+}
