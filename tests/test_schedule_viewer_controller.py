@@ -31,7 +31,11 @@ def test_import_schedule_file_replaces_available_schedules(monkeypatch):
 
     response = asyncio.run(schedule_export_controller.import_schedule_file(file))
 
-    assert response == {"count": 1, "schedules": schedules}
+    assert response == {
+        "count": 1,
+        "schedules": schedules,
+        "source_filename": "fall-term_schedules.json",
+    }
     assert store.schedule == schedules
     assert store.schedule_filename == "fall-term_schedules.json"
 
@@ -92,14 +96,17 @@ def test_get_and_clear_available_schedules(monkeypatch):
     """Verify listing returns stored schedules and clearing removes them and their filename."""
     monkeypatch.setattr(store, "schedule", [{"schedule_id": 1}])
     monkeypatch.setattr(store, "schedule_filename", "schedules.json")
+    monkeypatch.setattr(store, "config_filename", None)
 
     assert schedule_export_controller.get_available_schedules() == {
         "count": 1,
         "schedules": [{"schedule_id": 1}],
+        "source_filename": "schedules.json",
     }
     assert schedule_export_controller.clear_available_schedules() == {
         "count": 0,
         "schedules": [],
+        "source_filename": None,
     }
     assert store.schedule == []
     assert store.schedule_filename is None
