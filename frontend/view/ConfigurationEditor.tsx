@@ -8,6 +8,7 @@ import {
   configMenus,
   configTableColumns,
   getConfigTableRows,
+  removeConfigTableRow,
   type ConfigTableRow,
 } from "./configEditorModel";
 import {
@@ -146,6 +147,52 @@ const listFields: Record<string, string[]> = {
   ],
 };
 
+function CommaSeparatedListField({
+  column,
+  value,
+  onChange,
+  autoFocus,
+}: {
+  column: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoFocus: boolean;
+}) {
+  const [text, setText] = useState(() => {
+    const parsed = parseEditorJson(value, []);
+    return Array.isArray(parsed) ? parsed.map(String).join(", ") : value;
+  });
+
+  return (
+    <input
+      autoFocus={autoFocus}
+      aria-label={column}
+      type="text"
+      placeholder="Separate values with commas"
+      value={text}
+      onChange={(event) => {
+        const nextText = event.target.value;
+        setText(nextText);
+        onChange(JSON.stringify(
+          nextText
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+        ));
+      }}
+      style={{
+        display: "block",
+        width: "100%",
+        marginTop: 4,
+        padding: 8,
+        border: "1px solid #cbd5e1",
+        borderRadius: 4,
+        boxSizing: "border-box",
+      }}
+    />
+  );
+}
+
 const structuredEditorStyle = {
   display: "grid",
   gap: 12,
@@ -281,34 +328,12 @@ function ConfigFieldEditor({
   }
 
   if (listFields[menu]?.includes(column)) {
-    const listValue = parseEditorJson(value, []);
-    const textValue = Array.isArray(listValue)
-      ? listValue.map(String).join(", ")
-      : value;
     return (
-      <input
+      <CommaSeparatedListField
+        column={column}
+        value={value}
+        onChange={onChange}
         autoFocus={autoFocus}
-        aria-label={column}
-        type="text"
-        placeholder="Separate values with commas"
-        value={textValue}
-        onChange={(event) =>
-          onChange(JSON.stringify(
-            event.target.value
-              .split(",")
-              .map((item) => item.trim())
-              .filter(Boolean),
-          ))
-        }
-        style={{
-          display: "block",
-          width: "100%",
-          marginTop: 4,
-          padding: 8,
-          border: "1px solid #cbd5e1",
-          borderRadius: 4,
-          boxSizing: "border-box",
-        }}
       />
     );
   }
@@ -688,15 +713,16 @@ export default function ConfigurationEditor({
   };
   const validateEditorDraft = async (
     draftTables: Record<string, ConfigTableRow[]>,
+    baselineConfig = originalEditorConfig,
   ) => {
-    if (originalEditorConfig === null || !editorFileName) return;
+    if (baselineConfig === null || !editorFileName) return;
 
     setEditorDraftChecking(true);
     setEditorDraftValid(false);
     setEditorDraftStatus("Checking changes...");
     setEditorDraftErrors([]);
     try {
-      const draftConfig = applyConfigTableRows(originalEditorConfig, draftTables);
+      const draftConfig = applyConfigTableRows(baselineConfig, draftTables);
       const draftFile = new File(
         [`${JSON.stringify(draftConfig, null, 2)}\n`],
         editorFileName,
@@ -1094,17 +1120,26 @@ export default function ConfigurationEditor({
                             type="button"
                             aria-label={`Delete ${selectedMenu} row ${rowIndex + 1}`}
                             onClick={() => {
+                              const updatedOriginalConfig = removeConfigTableRow(
+                                originalEditorConfig,
+                                selectedMenu,
+                                rowIndex,
+                              );
                               const updatedTables = {
                                 ...configRows,
                                 [selectedMenu]: (configRows[selectedMenu] ?? []).filter(
                                   (_, index) => index !== rowIndex,
                                 ),
                               };
+                              setOriginalEditorConfig(updatedOriginalConfig);
                               setConfigRows(updatedTables);
                               setEditorDirty(true);
                               setEditingRowIndex(null);
                               setEditedRow({});
-                              void validateEditorDraft(updatedTables);
+                              void validateEditorDraft(
+                                updatedTables,
+                                updatedOriginalConfig,
+                              );
                             }}
                             style={{
                               padding: "7px 8px",

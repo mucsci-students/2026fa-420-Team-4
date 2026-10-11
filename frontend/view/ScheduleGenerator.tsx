@@ -318,7 +318,7 @@ export default function ScheduleGenerator({
                   cursor: generatingSchedules ? "not-allowed" : "pointer",
                 }}
               >
-                {generatingSchedules ? "Generating..." : "Generate Schedule"}
+                {generatingSchedules ? "Generating..." : "Generate Schedules"}
               </button>{" "}
               {/* Generation Status */}{" "}
               <div
@@ -362,7 +362,7 @@ export default function ScheduleGenerator({
                       : "not-allowed",
                 }}
               >
-                {exportingSchedule ? "Exporting..." : "Export Schedule as CSV"}
+                {exportingSchedule ? "Exporting..." : "Export Generated Schedules as CSV"}
               </button>{" "}
             </section>
           </>);

@@ -151,6 +151,35 @@ export function getConfigTableRows(configValue: unknown): ConfigTables {
   };
 }
 
+export function removeConfigTableRow(
+  originalConfig: unknown,
+  menu: string,
+  rowIndex: number,
+): Record<string, unknown> {
+  const root = { ...asObject(originalConfig) };
+  const collection = sectionCollections[menu];
+
+  if (collection) {
+    const config = { ...asObject(root.config) };
+    const rows = config[collection];
+    if (Array.isArray(rows) && rowIndex >= 0 && rowIndex < rows.length) {
+      config[collection] = rows.filter((_, index) => index !== rowIndex);
+    }
+    return { ...root, config };
+  }
+
+  if (menu === "Class Patterns") {
+    const timeSlotConfig = { ...asObject(root.time_slot_config) };
+    const classes = timeSlotConfig.classes;
+    if (Array.isArray(classes) && rowIndex >= 0 && rowIndex < classes.length) {
+      timeSlotConfig.classes = classes.filter((_, index) => index !== rowIndex);
+    }
+    return { ...root, time_slot_config: timeSlotConfig };
+  }
+
+  return root;
+}
+
 function parseCellValue(menu: string, column: string, value: string): unknown {
   if (value === "" && column === "Section ID") return null;
   if (numericFields[menu]?.includes(column) && value.trim() !== "") {
