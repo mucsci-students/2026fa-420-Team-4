@@ -15,6 +15,7 @@ export interface GenerationSettings {
   optimizer_flags: string[];
 }
 
+/** Create a controller that retains a loaded configuration and serializes updated generation settings. */
 export function createGenerationSettingsController() {
   let config: Record<string, unknown> | null = null;
   let fileName = "";
@@ -26,9 +27,13 @@ export function createGenerationSettingsController() {
     return config;
   };
 
-  const validateLimit = (limit: number) => {
-    if (!Number.isSafeInteger(limit) || limit < 1) {
-      throw new Error("Generation limit must be a positive integer.");
+  /** Reject limits that are not positive safe integers, allowing zero only when requested. */
+  const validateLimit = (limit: number, allowZero = false) => {
+    if (!Number.isSafeInteger(limit) || limit < (allowZero ? 0 : 1)) {
+      const requirement = allowZero
+        ? "a non-negative integer"
+        : "a positive integer";
+      throw new Error(`Generation limit must be ${requirement}.`);
     }
   };
 
@@ -45,6 +50,12 @@ export function createGenerationSettingsController() {
   };
 
   return {
+    /**
+     * Parse a JSON file and retain its configuration and filename after validating
+     * a non-negative safe-integer limit and supported optimizer flags. Return the
+     * settings, defaulting missing values to 10 schedules and no optimizer flags.
+     * Reject unreadable or invalid files without replacing the loaded configuration.
+     */
     async open(file: File): Promise<GenerationSettings> {
       const parsed: unknown = JSON.parse(await file.text());
       if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -57,7 +68,7 @@ export function createGenerationSettingsController() {
       if (typeof limit !== "number") {
         throw new Error("Configuration limit must be a number.");
       }
-      validateLimit(limit);
+      validateLimit(limit, true);
       if (!Array.isArray(optimizerFlags) ||
           optimizerFlags.some((flag) => typeof flag !== "string")) {
         throw new Error("Configuration optimizer_flags must be an array of strings.");
@@ -72,8 +83,9 @@ export function createGenerationSettingsController() {
       config = null;
       fileName = "";
     },
+    /** Set the loaded configuration limit, allowing zero to clear schedules; throw if invalid or unloaded. */
     setLimit(limit: number): void {
-      validateLimit(limit);
+      validateLimit(limit, true);
       requireConfig().limit = limit;
     },
     setOptimizerFlags(flags: string[]): void {

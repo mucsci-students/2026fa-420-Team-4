@@ -8,21 +8,26 @@ interface AppProps {
   onConfigSelected: (config: unknown) => void;
   onChooseFile: (file: File) => Promise<OpenedConfigFile>;
   onCreateNew: () => void;
+  onStatusChange: (message: string) => void;
 }
 
+/** Render configuration creation and file loading controls with status and error feedback. */
 export function App({
   onConfigSelected,
   onChooseFile,
   onCreateNew,
+  onStatusChange,
 }: AppProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string>('');
   const [errors, setErrors] = useState<string[]>([]);
 
+  /** Open a selected configuration and report loading results; ignore an empty selection. */
   const handleChooseFile = async (selectedFile: File | undefined) => {
     if (!selectedFile) return;
     setErrors([]);
     setStatus('Loading configuration file...');
+    onStatusChange('Loading configuration file...');
 
     try {
       const selected = await onChooseFile(selectedFile);
@@ -30,8 +35,10 @@ export function App({
       setStatus(
         `Loaded ${selected.file.name} into the editor. "Save Changes" will download the edited configuration with the same filename.`,
       );
+      onStatusChange(`${selected.file.name} loaded successfully.`);
     } catch (error) {
       setStatus('Could not open configuration file.');
+      onStatusChange('Could not open configuration file.');
       if (
         axios.isAxiosError<{
           detail?: { errors?: string[] } | string;
@@ -52,36 +59,37 @@ export function App({
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '40px auto', fontFamily: 'sans-serif', padding: '0 20px' }}>
+    <div className="config-start-screen">
       <h1>Configuration Editor</h1>
 
-      <div style={{ border: '1px solid #ccc', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+      <div className="config-start-card">
         <h2>Create New Config or Load Existing</h2>
-        <div style={{ marginBottom: '10px' }}>
+        <div className="config-start-actions">
           <button
             type="button"
             onClick={() => {
               onCreateNew();
               setStatus('Success: New configuration created. Save Changes downloads it as new-config.json.');
+              onStatusChange('New configuration created.');
               setErrors([]);
             }}
           >
             Create New Config
           </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".json,application/json"
+            onChange={(event) => {
+              void handleChooseFile(event.target.files?.[0]);
+              event.currentTarget.value = '';
+            }}
+            style={{ display: 'none' }}
+          />
+          <button type="button" onClick={() => fileInput.current?.click()}>
+            Choose File
+          </button>
         </div>
-        <input
-          ref={fileInput}
-          type="file"
-          accept=".json,application/json"
-          onChange={(event) => {
-            void handleChooseFile(event.target.files?.[0]);
-            event.currentTarget.value = '';
-          }}
-          style={{ display: 'none' }}
-        />
-        <button type="button" onClick={() => fileInput.current?.click()}>
-          Choose File
-        </button>
       </div>
 
       {status && (
@@ -98,7 +106,7 @@ export function App({
         </p>
       )}
       {errors.length > 0 && (
-        <div role="alert" style={{ background: '#fef2f2', color: '#991b1b', padding: '12px 16px', border: '1px solid #fecaca', borderRadius: '6px' }}>
+        <div className="retro-validation-errors" role="alert" style={{ background: '#fef2f2', color: '#991b1b', padding: '12px 16px', border: '1px solid #fecaca', borderRadius: '6px' }}>
           <h4 style={{ margin: '0 0 8px' }}>Please fix these configuration issues:</h4>
           <ul style={{ margin: 0, paddingLeft: 20 }}>
             {errors.map((err, idx) => (

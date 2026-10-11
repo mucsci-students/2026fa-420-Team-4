@@ -111,6 +111,10 @@ const optionalFields: Record<string, string[]> = {
   "Class Patterns": ["Disabled", "Start Time"],
 };
 
+const nullableFields: Record<string, string[]> = {
+  Courses: ["Faculty"],
+};
+
 export function asObject(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -151,6 +155,37 @@ export function getConfigTableRows(configValue: unknown): ConfigTables {
   };
 }
 
+/** Return a copied configuration with the indexed row removed from the selected collection.
+ * Unsupported sections and out-of-range indices leave existing rows intact. */
+export function removeConfigTableRow(
+  originalConfig: unknown,
+  menu: string,
+  rowIndex: number,
+): Record<string, unknown> {
+  const root = { ...asObject(originalConfig) };
+  const collection = sectionCollections[menu];
+
+  if (collection) {
+    const config = { ...asObject(root.config) };
+    const rows = config[collection];
+    if (Array.isArray(rows) && rowIndex >= 0 && rowIndex < rows.length) {
+      config[collection] = rows.filter((_, index) => index !== rowIndex);
+    }
+    return { ...root, config };
+  }
+
+  if (menu === "Class Patterns") {
+    const timeSlotConfig = { ...asObject(root.time_slot_config) };
+    const classes = timeSlotConfig.classes;
+    if (Array.isArray(classes) && rowIndex >= 0 && rowIndex < classes.length) {
+      timeSlotConfig.classes = classes.filter((_, index) => index !== rowIndex);
+    }
+    return { ...root, time_slot_config: timeSlotConfig };
+  }
+
+  return root;
+}
+
 function parseCellValue(menu: string, column: string, value: string): unknown {
   if (value === "" && column === "Section ID") return null;
   if (numericFields[menu]?.includes(column) && value.trim() !== "") {
@@ -170,6 +205,8 @@ function parseCellValue(menu: string, column: string, value: string): unknown {
   }
 }
 
+/** Convert table cells to configuration values while preserving unedited fields by row index.
+ * Empty nullable cells become null, and empty optional fields are omitted. */
 function toConfigObjects(
   menu: string,
   rows: ConfigTableRow[],
@@ -181,7 +218,9 @@ function toConfigObjects(
     for (const column of configTableColumns[menu]) {
       const key = column.toLowerCase().replaceAll(" ", "_");
       const value = row[column] ?? "";
-      if (
+      if (nullableFields[menu]?.includes(column) && value === "") {
+        output[key] = null;
+      } else if (
         optionalFields[menu]?.includes(column) &&
         (value === "" || value === null)
       ) {

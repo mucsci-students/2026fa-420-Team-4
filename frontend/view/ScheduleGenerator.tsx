@@ -1,12 +1,16 @@
 import { useRef, useState } from "react";
 import axios from "axios";
-import { runGenerator, uploadConfig } from "./api";
+import {
+  runGenerator,
+  uploadConfig,
+  type ScheduleExportFormat,
+} from "./api";
 import {
   createGenerationSettingsController,
   DEFAULT_GENERATION_LIMIT,
 } from "./front_controllers/generationSettingsController";
 import { formatConfigErrors } from "./configErrorMessages";
-import { exportScheduleCsvFile } from "./front_controllers/scheduleExportController";
+import { exportScheduleFile } from "./front_controllers/scheduleExportController";
 const optimizerFlagOptions = [
   { value: "faculty_course", label: "Faculty \u2192 Course Preference" },
   { value: "faculty_room", label: "Faculty \u2192 Room Preference" },
@@ -17,10 +21,18 @@ const optimizerFlagOptions = [
   { value: "pack_labs", label: "Pack Labs" },
 ];
 
-export default function ScheduleGenerator() {
+/** Render configuration loading, generation settings, and schedule export controls. */
+export default function ScheduleGenerator({
+  onStatusChange,
+}: {
+  onStatusChange: (message: string) => void;
+}) {
   const generationConfigInput = useRef<HTMLInputElement>(null);
   const [generationLimit, setGenerationLimit] = useState(
     DEFAULT_GENERATION_LIMIT,
+  );
+  const [generationLimitInput, setGenerationLimitInput] = useState(
+    String(DEFAULT_GENERATION_LIMIT),
   );
   const [optimizerFlags, setOptimizerFlags] = useState<string[]>([]);
   const [generatedScheduleCount, setGeneratedScheduleCount] = useState(0);
@@ -30,6 +42,8 @@ export default function ScheduleGenerator() {
   const [generationError, setGenerationError] = useState("");
   const [generatingSchedules, setGeneratingSchedules] = useState(false);
   const [exportingSchedule, setExportingSchedule] = useState(false);
+  const [exportFormat, setExportFormat] =
+    useState<ScheduleExportFormat>("json");
   const [configFile, setConfigFile] = useState<File | null>(null);
   const [configLoading, setConfigLoading] = useState(false);
   const [configStatus, setConfigStatus] = useState("");
@@ -47,22 +61,27 @@ export default function ScheduleGenerator() {
       generationSettingsController.setOptimizerFlags(updatedFlags);
     }
   };
+  /** Load the selected configuration into the controller and backend, reporting any errors. */
   const handleGenerationConfigSelected = async (file: File | undefined) => {
     if (!file) return;
     setConfigLoading(true);
     setConfigErrors([]);
     setConfigStatus("Reading and loading configuration...");
+    onStatusChange("Reading and loading configuration...");
     try {
       const settings = await generationSettingsController.open(file);
       await uploadConfig(generationSettingsController.toFile());
       setConfigFile(file);
       setGenerationLimit(settings.limit);
+      setGenerationLimitInput(String(settings.limit));
       setOptimizerFlags(settings.optimizer_flags);
       setConfigStatus(`${file.name} loaded successfully.`);
+      onStatusChange(`${file.name} loaded successfully.`);
     } catch (error) {
       generationSettingsController.clear();
       setConfigFile(null);
       setConfigStatus("Could not load configuration.");
+      onStatusChange("Could not load configuration.");
       if (
         axios.isAxiosError<{
           detail?: { errors?: string[] } | string;
@@ -83,36 +102,54 @@ export default function ScheduleGenerator() {
       setConfigLoading(false);
     }
   };
+  /** Request schedules using the current limit, or clear results when the limit is zero. */
   const handleGenerateSchedule = async () => {
     setGeneratingSchedules(true);
     setGenerationError("");
     setGenerationStatus("Generating schedules...");
+    onStatusChange("Generating schedules...");
     try {
-      if (configFile) {
+      if (configFile && generationLimit > 0) {
         await uploadConfig(generationSettingsController.toFile());
       }
-      const result = await runGenerator();
+      const result = await runGenerator(generationLimit);
       setGeneratedScheduleCount(result.count);
-      setGenerationStatus(`Generated ${result.count} schedule(s).`);
+      const message = generationLimit === 0
+        ? "Schedules cleared."
+        : `Generated ${result.count} schedule(s).`;
+      setGenerationStatus(message);
+      onStatusChange(message);
     } catch (error) {
       setGeneratedScheduleCount(0);
       setGenerationStatus("Schedule generation failed.");
       setGenerationError(
         error instanceof Error ? error.message : "Could not generate schedules.",
       );
+      onStatusChange(
+        error instanceof Error
+          ? `Schedule generation failed: ${error.message}`
+          : "Schedule generation failed.",
+      );
     } finally {
       setGeneratingSchedules(false);
     }
   };
+  /** Download generated schedules in the selected format and report progress or errors. */
   const handleExportSchedule = async () => {
     setExportingSchedule(true);
     setGenerationError("");
+    onStatusChange("Exporting schedules...");
     try {
-      await exportScheduleCsvFile();
-    } catch (error) {
-      setGenerationError(
-        error instanceof Error ? error.message : "Could not export schedules.",
+      await exportScheduleFile(exportFormat);
+      onStatusChange(
+        `Schedule export downloaded as ${exportFormat.toUpperCase()}.`,
       );
+    } catch (error) {
+      const message = error instanceof Error
+        ? `Could not export schedules: ${error.message}`
+        : "Could not export schedules.";
+      setGenerationError(message);
+      onStatusChange(message);
     } finally {
       setExportingSchedule(false);
     }
@@ -169,7 +206,7 @@ export default function ScheduleGenerator() {
                   </p>
                 )}
                 {configErrors.length > 0 && (
-                  <div role="alert" style={{ marginTop: 10, padding: "10px 14px", color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6 }}>
+                  <div className="retro-validation-errors" role="alert" style={{ marginTop: 10, padding: "10px 14px", color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6 }}>
                     <strong>Please fix these configuration issues:</strong>
                     <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
                     {configErrors.map((error, index) => (
@@ -209,16 +246,23 @@ export default function ScheduleGenerator() {
                   id="generation-limit"
                   disabled={configFile === null}
                   type="number"
-                  min={1}
-                  value={generationLimit}
+                  min={0}
+                  step={1}
+                  value={generationLimitInput}
                   onChange={(event) => {
-                    const value = Number(event.target.value);
-                    if (Number.isSafeInteger(value) && value >= 1) {
+                    const input = event.target.value;
+                    setGenerationLimitInput(input);
+                    if (/^\d+$/.test(input)) {
+                      const value = Number(input);
+                      if (!Number.isSafeInteger(value)) return;
                       setGenerationLimit(value);
                       if (configFile) {
                         generationSettingsController.setLimit(value);
                       }
                     }
+                  }}
+                  onBlur={() => {
+                    setGenerationLimitInput(String(generationLimit));
                   }}
                   style={{
                     width: 200,
@@ -231,7 +275,8 @@ export default function ScheduleGenerator() {
                 />{" "}
                 <p style={{ marginBottom: 0, color: "#64748b", fontSize: 12 }}>
                   {" "}
-                  Number of schedules the generator should produce.{" "}
+                  Number of schedules the generator should produce. Enter 0 to
+                  clear generated schedules without generating any.{" "}
                 </p>{" "}
               </div>{" "}
               {/* Optimizer Flags */}{" "}
@@ -300,7 +345,7 @@ export default function ScheduleGenerator() {
                   cursor: generatingSchedules ? "not-allowed" : "pointer",
                 }}
               >
-                {generatingSchedules ? "Generating..." : "Generate Schedule"}
+                {generatingSchedules ? "Generating..." : "Generate Schedules"}
               </button>{" "}
               {/* Generation Status */}{" "}
               <div
@@ -325,6 +370,29 @@ export default function ScheduleGenerator() {
                   </p>
                 )}
               </div>{" "}
+              <label
+                htmlFor="schedule-export-format"
+                style={{ display: "inline-block", marginTop: 20, marginRight: 8 }}
+              >
+                Export format
+              </label>
+              <select
+                id="schedule-export-format"
+                value={exportFormat}
+                onChange={(event) =>
+                  setExportFormat(event.target.value as ScheduleExportFormat)
+                }
+                disabled={generatedScheduleCount === 0 || exportingSchedule}
+                style={{
+                  padding: "9px 10px",
+                  border: "1px solid #94a3b8",
+                  borderRadius: 6,
+                  fontSize: 14,
+                }}
+              >
+                <option value="json">JSON</option>
+                <option value="csv">CSV</option>
+              </select>{" "}
               <button
                 type="button"
                 onClick={() => void handleExportSchedule()}
@@ -344,7 +412,9 @@ export default function ScheduleGenerator() {
                       : "not-allowed",
                 }}
               >
-                {exportingSchedule ? "Exporting..." : "Export Schedule as CSV"}
+                {exportingSchedule
+                  ? "Exporting..."
+                  : "Export Generated Schedules"}
               </button>{" "}
             </section>
           </>);

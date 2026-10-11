@@ -15,6 +15,7 @@ const options: MainOption[] = [
   "Schedule Viewer",
 ];
 
+/** Render the application navigation, persistent views, and shared status bar. */
 export default function MainMenu() {
   const [activeOption, setActiveOption] =
     useState<MainOption>("Configuration Editor");
@@ -22,48 +23,32 @@ export default function MainMenu() {
   const [selectedEditorSection, setSelectedEditorSection] = useState(
     "Configuration Editor",
   );
-  const buttonStyle = (active: boolean) => ({
-    width: "100%",
-    padding: "10px 12px",
-    border: 0,
-    borderRadius: 6,
-    background: active ? "#334155" : "transparent",
-    color: "#f8fafc",
-    textAlign: "left" as const,
-    fontSize: 14,
-    cursor: "pointer",
-  });
+  const [statusMessage, setStatusMessage] = useState("Ready.");
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        background: "#f1f5f9",
-        color: "#0f172a",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+    <div className="retro-desktop">
+      <div className="retro-window">
+        <header className="retro-titlebar">
+          <div className="retro-title">
+            <span>MU Scheduler</span>
+          </div>
+          <div className="retro-window-controls" aria-hidden="true">
+            <span className="retro-window-control">_</span>
+            <span className="retro-window-control">□</span>
+            <span className="retro-window-control">×</span>
+          </div>
+        </header>
+        <div className="retro-window-body">
         <nav
           aria-label="Main menu"
-          style={{
-            width: 210,
-            flexShrink: 0,
-            padding: 12,
-            boxSizing: "border-box",
-            background: "#1e293b",
-            color: "#f8fafc",
-            overflowY: "auto",
-          }}
+          className="retro-sidebar"
         >
           <button
             type="button"
             aria-expanded={configurationExpanded}
-            style={buttonStyle(activeOption === "Configuration Editor")}
+            className={`retro-nav-button ${
+              activeOption === "Configuration Editor" ? "is-active" : ""
+            }`}
             onClick={() => {
               setActiveOption("Configuration Editor");
               setSelectedEditorSection("Configuration Editor");
@@ -76,25 +61,17 @@ export default function MainMenu() {
             Configuration Editor
           </button>
           {configurationExpanded && (
-            <div
-              style={{
-                margin: "2px 0 8px 18px",
-                paddingLeft: 10,
-                borderLeft: "1px solid #475569",
-              }}
-            >
+            <div className="retro-nav-submenu">
               {configMenus.map((menu) => (
                 <button
                   key={menu}
                   type="button"
-                  style={{
-                    ...buttonStyle(
-                      activeOption === "Configuration Editor" &&
-                        selectedEditorSection === menu,
-                    ),
-                    padding: "8px 10px",
-                    fontSize: 13,
-                  }}
+                  className={`retro-nav-button ${
+                    activeOption === "Configuration Editor" &&
+                    selectedEditorSection === menu
+                      ? "is-active"
+                      : ""
+                  }`}
                   onClick={() => {
                     setSelectedEditorSection(menu);
                     setActiveOption("Configuration Editor");
@@ -111,7 +88,9 @@ export default function MainMenu() {
               <button
                 key={option}
                 type="button"
-                style={buttonStyle(activeOption === option)}
+                className={`retro-nav-button ${
+                  activeOption === option ? "is-active" : ""
+                }`}
                 onClick={() => setActiveOption(option)}
               >
                 {option}
@@ -119,23 +98,21 @@ export default function MainMenu() {
             ))}
         </nav>
         <main
-          style={{
-            flex: 1,
-            minWidth: 0,
-            minHeight: 0,
-            overflow: "auto",
-            padding: 16,
-            boxSizing: "border-box",
-          }}
+          className="retro-content"
         >
           <div
             style={{
               display: activeOption === "Configuration Editor" ? "flex" : "none",
+              width: "100%",
+              flex: 1,
               height: "100%",
               minHeight: 0,
             }}
           >
-            <ConfigurationEditor selectedMenu={selectedEditorSection} />
+            <ConfigurationEditor
+              selectedMenu={selectedEditorSection}
+              onStatusChange={setStatusMessage}
+            />
           </div>
           <div
             style={{
@@ -144,7 +121,7 @@ export default function MainMenu() {
               minHeight: 0,
             }}
           >
-            <ScheduleGenerator />
+            <ScheduleGenerator onStatusChange={setStatusMessage} />
           </div>
           <div
             style={{
@@ -153,9 +130,18 @@ export default function MainMenu() {
               minHeight: 0,
             }}
           >
-            <ScheduleViewer />
+            <ScheduleViewer
+              isActive={activeOption === "Schedule Viewer"}
+              onStatusChange={setStatusMessage}
+            />
           </div>
         </main>
+      </div>
+        <footer className="retro-statusbar">
+          <span className="retro-status-cell" role="status" aria-live="polite">
+            {statusMessage}
+          </span>
+        </footer>
       </div>
     </div>
   );

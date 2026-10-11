@@ -108,6 +108,23 @@ http://localhost:3000
 ```
 ## Exporting generated schedules
 
+The Schedule Viewer displays available schedules as tables grouped by room/lab
+or faculty. It supports schedule navigation, loading a JSON schedule file,
+clearing loaded results, and exporting the currently available schedules.
+Generated assignments include course, faculty, room/lab, day, start, duration,
+and end time. The viewer also recognizes schedule JSON files exported by older
+versions of the application.
+
+Schedule JSON is an array of schedule objects. Each object has a `schedule_id`
+and a `courses` array; each course assignment contains its course identifier,
+faculty, room/lab, and a non-empty `times` array of meetings with `day`,
+`start` (minutes after midnight or `HH:MM`), and positive `duration` in minutes.
+The importer also accepts the earlier exported array-of-assignments and
+five-column CSV-string formats.
+
+In the Schedule Generator, choose **JSON** (the default) or **CSV** in the
+export format selector before downloading generated schedules.
+
 Pass the generated schedule objects to `export_schedules`. A save dialog lets
 you choose a destination; the `.json` or `.csv` extension determines the format.
 For example, when `scheduler` is an initialized scheduler instance:
@@ -121,5 +138,3 @@ export_schedules(schedules)
 
 JSON preserves the generated schedules as an array. CSV writes one row per
 schedule entry and includes schedule and entry numbers.
-
-
