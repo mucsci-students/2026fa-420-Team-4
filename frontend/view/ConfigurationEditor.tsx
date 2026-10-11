@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import App from "./App";
 import { validateConfig } from "./api";
@@ -655,6 +655,10 @@ export default function ConfigurationEditor({
     const [editorDraftChecking, setEditorDraftChecking] = useState(false);
     const [editorDraftValid, setEditorDraftValid] = useState(false);
     const [editorAddingRow, setEditorAddingRow] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<{
+      menu: string;
+      rowIndex: number;
+    } | null>(null);
     const [editorFileController] = useState(createConfigFileController);
   const setEditorSaveStatus = (message: string) => {
     setEditorSaveStatusState(message);
@@ -671,6 +675,15 @@ export default function ConfigurationEditor({
     setAddWindowOpen(false);
     setNewRow({});
   }
+  useEffect(() => {
+    if (!deleteTarget) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDeleteTarget(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteTarget]);
  const handleEditorConfigSelected = (config: unknown) => {
     setOriginalEditorConfig(config);
     setConfigRows(getConfigTableRows(config));
@@ -1028,6 +1041,7 @@ export default function ConfigurationEditor({
                   }}
                 >
                   <colgroup>
+                    <col style={{ width: 76 }} />
                     {configTableColumns[selectedMenu].map((column) => (
                       <col
                         key={column}
@@ -1038,6 +1052,18 @@ export default function ConfigurationEditor({
                   </colgroup>
                   <thead>
                     <tr>
+                      <th
+                        scope="col"
+                        style={{
+                          padding: 10,
+                          borderBottom: "2px solid #cbd5e1",
+                          borderRight: "1px solid #e2e8f0",
+                          background: "#f8fafc",
+                          textAlign: "center",
+                        }}
+                      >
+                        Item #
+                      </th>
                       {configTableColumns[selectedMenu].map((column) => (
                         <th
                           key={column}
@@ -1071,6 +1097,17 @@ export default function ConfigurationEditor({
                   <tbody>
                     {(configRows[selectedMenu] ?? []).map((row, rowIndex) => (
                       <tr key={`${selectedMenu}-${rowIndex}`} style={{ height: 48 }}>
+                        <td
+                          style={{
+                            height: 48,
+                            padding: 8,
+                            borderBottom: "1px solid #e2e8f0",
+                            textAlign: "center",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {rowIndex + 1}
+                        </td>
                         {configTableColumns[selectedMenu].map((column) => (
                           <td
                             key={column}
@@ -1119,28 +1156,10 @@ export default function ConfigurationEditor({
                           <button
                             type="button"
                             aria-label={`Delete ${selectedMenu} row ${rowIndex + 1}`}
-                            onClick={() => {
-                              const updatedOriginalConfig = removeConfigTableRow(
-                                originalEditorConfig,
-                                selectedMenu,
-                                rowIndex,
-                              );
-                              const updatedTables = {
-                                ...configRows,
-                                [selectedMenu]: (configRows[selectedMenu] ?? []).filter(
-                                  (_, index) => index !== rowIndex,
-                                ),
-                              };
-                              setOriginalEditorConfig(updatedOriginalConfig);
-                              setConfigRows(updatedTables);
-                              setEditorDirty(true);
-                              setEditingRowIndex(null);
-                              setEditedRow({});
-                              void validateEditorDraft(
-                                updatedTables,
-                                updatedOriginalConfig,
-                              );
-                            }}
+                            onClick={() => setDeleteTarget({
+                              menu: selectedMenu,
+                              rowIndex,
+                            })}
                             style={{
                               padding: "7px 8px",
                               border: "1px solid #cbd5e1",
@@ -1318,6 +1337,11 @@ export default function ConfigurationEditor({
               )}
               {(editorDraftStatus || editorDraftErrors.length > 0) && (
                 <div
+                  className={
+                    editorDraftErrors.length > 0
+                      ? "retro-validation-errors"
+                      : undefined
+                  }
                   role={editorDraftErrors.length > 0 ? "alert" : "status"}
                   style={{
                     marginTop: 12,
@@ -1413,6 +1437,63 @@ export default function ConfigurationEditor({
                   {editorSaving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
+              {deleteTarget && (
+                <div className="retro-dialog-backdrop">
+                  <section
+                    aria-labelledby="delete-confirmation-title"
+                    aria-modal="true"
+                    className="retro-dialog"
+                    role="alertdialog"
+                  >
+                    <header className="retro-dialog-titlebar">
+                      Confirm Delete
+                    </header>
+                    <div className="retro-dialog-content">
+                      <p id="delete-confirmation-title">
+                        Delete {deleteTarget.menu} item {deleteTarget.rowIndex + 1}?
+                      </p>
+                      <div className="retro-dialog-actions">
+                        <button
+                          autoFocus
+                          type="button"
+                          onClick={() => setDeleteTarget(null)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const { menu, rowIndex } = deleteTarget;
+                            const updatedOriginalConfig = removeConfigTableRow(
+                              originalEditorConfig,
+                              menu,
+                              rowIndex,
+                            );
+                            const updatedTables = {
+                              ...configRows,
+                              [menu]: (configRows[menu] ?? []).filter(
+                                (_, index) => index !== rowIndex,
+                              ),
+                            };
+                            setOriginalEditorConfig(updatedOriginalConfig);
+                            setConfigRows(updatedTables);
+                            setEditorDirty(true);
+                            setEditingRowIndex(null);
+                            setEditedRow({});
+                            setDeleteTarget(null);
+                            void validateEditorDraft(
+                              updatedTables,
+                              updatedOriginalConfig,
+                            );
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              )}
             </section>
           )}{" "}
     </div>

@@ -187,7 +187,7 @@ export default function ScheduleGenerator({
                   </p>
                 )}
                 {configErrors.length > 0 && (
-                  <div role="alert" style={{ marginTop: 10, padding: "10px 14px", color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6 }}>
+                  <div className="retro-validation-errors" role="alert" style={{ marginTop: 10, padding: "10px 14px", color: "#991b1b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6 }}>
                     <strong>Please fix these configuration issues:</strong>
                     <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
                     {configErrors.map((error, index) => (

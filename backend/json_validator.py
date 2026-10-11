@@ -6,7 +6,7 @@ from scheduler import validate_combined_config_data
 
 
 def validate_config_dict(data: Any) -> Tuple[bool, List[str]]:
-    """Validates an in-memory dictionary using the scheduler's validation engine."""
+    """Validates an in-memory config using the scheduler's validation engine."""
     errors: List[str] = []
 
     if not isinstance(data, dict):

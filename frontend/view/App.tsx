@@ -104,7 +104,7 @@ export function App({
         </p>
       )}
       {errors.length > 0 && (
-        <div role="alert" style={{ background: '#fef2f2', color: '#991b1b', padding: '12px 16px', border: '1px solid #fecaca', borderRadius: '6px' }}>
+        <div className="retro-validation-errors" role="alert" style={{ background: '#fef2f2', color: '#991b1b', padding: '12px 16px', border: '1px solid #fecaca', borderRadius: '6px' }}>
           <h4 style={{ margin: '0 0 8px' }}>Please fix these configuration issues:</h4>
           <ul style={{ margin: 0, paddingLeft: 20 }}>
             {errors.map((err, idx) => (
