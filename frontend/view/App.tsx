@@ -28,7 +28,7 @@ export function App({
       const selected = await onChooseFile(selectedFile);
       onConfigSelected(selected.config);
       setStatus(
-        `Loaded ${selected.file.name} into the editor. Save Changes downloads the edited configuration with the same filename.`,
+        `Loaded ${selected.file.name} into the editor. "Save Changes" will download the edited configuration with the same filename.`,
       );
     } catch (error) {
       setStatus('Could not open configuration file.');
