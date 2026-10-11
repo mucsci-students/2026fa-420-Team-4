@@ -33,8 +33,10 @@ cd 2026fa-420-Team-4
 
 ### 2. Sync the Python environment
 
+
+Use python -m if using venv
 ```bash
-python -m uv sync
+(python -m) uv sync
 ```
 
 ### 3. Install frontend dependencies
@@ -54,9 +56,9 @@ The web application requires the FastAPI backend and React frontend to run simul
 ## Terminal 1 — FastAPI Backend
 
 From the repository root:
-
+Use python -m if using venv
 ```bash
-python -m uv run uvicorn backend.main:app --reload --port 8000
+(python -m) uv run uvicorn backend.main:app --reload --port 8000
 ```
 
 The backend will run at:
@@ -104,4 +106,20 @@ http://localhost:3000
 ├── uv.lock                    # Locked dependency versions
 └── README.md
 ```
+## Exporting generated schedules
+
+Pass the generated schedule objects to `export_schedules`. A save dialog lets
+you choose a destination; the `.json` or `.csv` extension determines the format.
+For example, when `scheduler` is an initialized scheduler instance:
+
+```python
+from Schedule_exporter import export_schedules
+
+schedules = list(scheduler.get_models())
+export_schedules(schedules)
+```
+
+JSON preserves the generated schedules as an array. CSV writes one row per
+schedule entry and includes schedule and entry numbers.
+
 
