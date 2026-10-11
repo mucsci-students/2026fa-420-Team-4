@@ -21,9 +21,8 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
 
     if limit == 0:
         store.schedule = []
-        store.generation_running = False
-        store.generation_progess = 0
         store.schedule_filename = None
+        store.generation_running = False
         return {
             "status": "success",
             "count": 0,
@@ -45,7 +44,7 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
 
         # Iterate over generated schedules
         for schedule_idx, model in enumerate(scheduler.get_models(), start=1):
-            print (f"Processing schedule {schedule_idx}")
+            print(f"Processing schedule {schedule_idx}")
             schedules.append({
                 "schedule_id": schedule_idx,
                 "courses": [
@@ -56,8 +55,8 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
             store.generation_progess = schedule_idx
 
         store.schedule = schedules
-        store.generation_running = False
         store.schedule_filename = None
+        store.generation_running = False
         return {
             "status": "success",
             "count": len(schedules),
@@ -66,8 +65,6 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
     except Exception as e:
         store.generation_running = False
         raise HTTPException(status_code=500, detail=f"Scheduling error: {str(e)}")
-
-
 @router.get("/progress")
 def get_generator_progress():
     return {

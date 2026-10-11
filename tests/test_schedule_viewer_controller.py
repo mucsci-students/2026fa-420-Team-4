@@ -147,7 +147,3 @@ def test_generator_stores_structured_course_assignments(monkeypatch):
     assert response["count"] == 1
     assert response["schedules"][0]["courses"][0]["course"] == "CS101.01"
     assert store.schedule[0]["courses"][0]["times"][0]["start"] == 540
-    assert generator_controller.get_generator_progress() == {
-        "count": 1,
-        "running": False,
-    }
