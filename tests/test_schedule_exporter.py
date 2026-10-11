@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 
 import pytest
 
@@ -42,6 +43,12 @@ def test_schedules_to_csv_serializes_generated_schedule_rows():
             "courses": '["CS201, Room B2, Tuesday 10:00"]',
         },
     ]
+
+
+def test_schedules_to_json_preserves_schedule_array():
+    schedules = [{"schedule_id": 1, "courses": ["CS101"]}]
+
+    assert json.loads(ScheduleExporter.schedules_to_json(schedules)) == schedules
 
 
 @pytest.mark.parametrize("prefix", ["=", "+", "-", "@", "\t", "\r"])

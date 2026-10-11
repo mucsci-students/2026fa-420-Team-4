@@ -49,8 +49,10 @@ export const runGenerator = async (limit: number) => {
   return response.data;
 };
 
-export const exportScheduleCsv = async () => {
-  const response = await api.get('/schedule/export/csv', {
+export type ScheduleExportFormat = 'json' | 'csv';
+
+export const exportSchedule = async (format: ScheduleExportFormat) => {
+  const response = await api.get(`/schedule/export/${format}`, {
     responseType: 'blob',
   });
   const contentDisposition = response.headers['content-disposition'] as
@@ -64,7 +66,7 @@ export const exportScheduleCsv = async () => {
   )?.[1];
   const filename = encodedFilename
     ? decodeURIComponent(encodedFilename)
-    : quotedFilename ?? 'schedules.csv';
+    : quotedFilename ?? `schedules.${format}`;
 
   return { blob: response.data as Blob, filename };
 };

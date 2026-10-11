@@ -70,6 +70,15 @@ def _to_serializable(value):
     )
 
 
+def schedules_to_json(schedules: Sequence[object]) -> str:
+    """Serialize schedules as a JSON array without opening a local file dialog."""
+    if isinstance(schedules, (str, bytes)) or not isinstance(schedules, Sequence):
+        raise TypeError("schedules must be a sequence of schedule objects")
+
+    schedule_data = [_to_serializable(schedule) for schedule in schedules]
+    return json.dumps(schedule_data, indent=2, ensure_ascii=False) + "\n"
+
+
 def _csv_rows(schedules):
     """Create one CSV record per schedule entry and retain its schedule number."""
     rows = []
@@ -146,10 +155,7 @@ def export_schedules(
     file_format = path.suffix.lower()
     if file_format == ".json":
         # JSON keeps each generated schedule together in the outer array.
-        path.write_text(
-            json.dumps(schedule_data, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
+        path.write_text(schedules_to_json(schedule_data), encoding="utf-8")
     elif file_format == ".csv":
         path.write_text(schedules_to_csv(schedule_data), encoding="utf-8", newline="")
     else:

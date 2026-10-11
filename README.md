@@ -108,6 +108,9 @@ http://localhost:3000
 ```
 ## Exporting generated schedules
 
+In the web interface, choose **JSON** (the default) or **CSV** in the export
+format selector before downloading generated schedules.
+
 Pass the generated schedule objects to `export_schedules`. A save dialog lets
 you choose a destination; the `.json` or `.csv` extension determines the format.
 For example, when `scheduler` is an initialized scheduler instance:
@@ -121,5 +124,4 @@ export_schedules(schedules)
 
 JSON preserves the generated schedules as an array. CSV writes one row per
 schedule entry and includes schedule and entry numbers.
-
 
