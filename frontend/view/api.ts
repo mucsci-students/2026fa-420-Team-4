@@ -15,7 +15,18 @@ export interface ScheduleCourse {
 // Ensure 'export' is explicitly here:
 export interface GeneratedSchedule {
   schedule_id: number;
-  courses: string[];
+  courses: ScheduleAssignment[];
+}
+
+export interface ScheduleAssignment {
+  [key: string]: unknown;
+}
+
+export type ScheduleData = Record<string, unknown> | unknown[];
+
+export interface ScheduleCollection {
+  count: number;
+  schedules: ScheduleData[];
 }
 
 export const uploadConfig = async (file: File) => {
@@ -46,6 +57,27 @@ export const runGenerator = async (limit: number) => {
   const response = await api.post('/generator/run', null, {
     params: { limit },
   });
+  return response.data;
+};
+
+export const getAvailableSchedules = async () => {
+  const response = await api.get<ScheduleCollection>('/schedule/available');
+  return response.data;
+};
+
+export const importScheduleFile = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post<ScheduleCollection>(
+    '/schedule/import',
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return response.data;
+};
+
+export const clearAvailableSchedules = async () => {
+  const response = await api.delete<ScheduleCollection>('/schedule/available');
   return response.data;
 };
 

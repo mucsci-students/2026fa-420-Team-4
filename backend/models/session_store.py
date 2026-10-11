@@ -8,6 +8,7 @@ class SessionStore:
         self.config_filename: Optional[str] = None
         self.config_object: Optional[CombinedConfig] = None
         self.schedule: Any = None
+        self.schedule_filename: Optional[str] = None
         self.is_loaded: bool = False
 
     def reset(self):
@@ -15,6 +16,7 @@ class SessionStore:
         self.config_filename = None
         self.config_object = None
         self.schedule = None
+        self.schedule_filename = None
         self.is_loaded = False
 
 store = SessionStore()

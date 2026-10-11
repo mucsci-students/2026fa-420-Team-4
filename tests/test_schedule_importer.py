@@ -9,8 +9,18 @@ from backend import Schedule_importer
 
 def test_import_schedules_returns_exported_schedule_array(monkeypatch, tmp_path):
     schedules = [
-        [{"course_id": "CS101", "room": "A1"}],
-        {"schedule_id": 2, "courses": ["CS201"]},
+        [{
+            "course": "CS101",
+            "faculty": "F1",
+            "room": "A1",
+            "times": [{"day": "MON", "start": "09:00", "duration": 90}],
+        }],
+        {
+            "schedule_id": 2,
+            "courses": [
+                "CS201,F2,R2,,TUE 10:00-11:30",
+            ],
+        },
     ]
     path = tmp_path / "schedules.json"
     path.write_text(json.dumps(schedules), encoding="utf-8")
@@ -26,6 +36,12 @@ def test_import_schedules_returns_exported_schedule_array(monkeypatch, tmp_path)
         ("schedules.json", "{invalid json"),
         ("schedules.json", '{"schedule_id": 1}'),
         ("schedules.json", '[{"schedule_id": 1}, "not a schedule"]'),
+        ("schedules.json", '[{"schedule_id": 1, "courses": ["CS101"]}]'),
+        (
+            "schedules.json",
+            '[{"schedule_id": 1, "courses": [{"course": "CS101", '
+            '"times": [{"day": "MON", "start": "25:00", "duration": 0}]}]}]',
+        ),
     ],
 )
 def test_import_schedules_rejects_invalid_files(

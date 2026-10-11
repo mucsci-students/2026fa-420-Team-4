@@ -17,6 +17,12 @@ def test_schedule_export_filename_falls_back_without_source_filename():
     assert ScheduleExporter.schedule_export_filename(None, ".json") == "schedules.json"
 
 
+def test_schedule_export_filename_does_not_duplicate_schedule_suffix():
+    assert ScheduleExporter.schedule_export_filename(
+        "fall-term_schedules.json", ".json"
+    ) == "fall-term_schedules.json"
+
+
 def test_schedules_to_csv_serializes_generated_schedule_rows():
     schedules = [
         {

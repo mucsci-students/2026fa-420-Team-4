@@ -18,7 +18,9 @@ def schedule_export_filename(source_filename: str | None, extension: str) -> str
     source_basename = (source_filename or "").replace("\\", "/").rsplit("/", 1)[-1]
     source_stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", Path(source_basename).stem)
     source_stem = source_stem.strip(" .")
-    stem = f"{source_stem}_schedules" if source_stem else "schedules"
+    if source_stem and not source_stem.lower().endswith("_schedules"):
+        source_stem = f"{source_stem}_schedules"
+    stem = source_stem or "schedules"
     return f"{stem}{extension}"
 
 

@@ -1,12 +1,40 @@
 from urllib.parse import quote
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from backend import ScheduleExporter
+from backend import Schedule_importer
 from backend.models.session_store import store
 
 router = APIRouter(prefix="/api/schedule", tags=["Schedule Export"])
+
+
+@router.get("/available")
+def get_available_schedules() -> dict:
+    schedules = store.schedule or []
+    return {"count": len(schedules), "schedules": schedules}
+
+
+@router.post("/import")
+async def import_schedule_file(file: UploadFile = File(...)) -> dict:
+    try:
+        schedules = Schedule_importer.load_schedules(
+            await file.read(), file.filename or ""
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    store.schedule = schedules
+    store.schedule_filename = file.filename
+    return {"count": len(schedules), "schedules": schedules}
+
+
+@router.delete("/available")
+def clear_available_schedules() -> dict:
+    store.schedule = []
+    store.schedule_filename = None
+    return {"count": 0, "schedules": []}
 
 
 def _export_schedule(extension: str) -> Response:
@@ -30,7 +58,7 @@ def _export_schedule(extension: str) -> Response:
         ) from error
 
     filename = ScheduleExporter.schedule_export_filename(
-        store.config_filename, extension
+        store.schedule_filename or store.config_filename, extension
     )
     if filename.isascii():
         content_disposition = f'attachment; filename="{filename}"'
