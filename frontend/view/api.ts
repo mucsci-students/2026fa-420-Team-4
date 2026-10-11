@@ -27,6 +27,15 @@ export const uploadConfig = async (file: File) => {
   return response.data;
 };
 
+export const validateConfig = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/config/validate', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
 export const getConfig = async () => {
   const response = await api.get('/config/');
   return response.data;
@@ -35,4 +44,24 @@ export const getConfig = async () => {
 export const runGenerator = async () => {
   const response = await api.post('/generator/run');
   return response.data;
+};
+
+export const exportScheduleCsv = async () => {
+  const response = await api.get('/schedule/export/csv', {
+    responseType: 'blob',
+  });
+  const contentDisposition = response.headers['content-disposition'] as
+    | string
+    | undefined;
+  const encodedFilename = contentDisposition?.match(
+    /filename\*=UTF-8''([^;]+)/i,
+  )?.[1];
+  const quotedFilename = contentDisposition?.match(
+    /filename="([^"]+)"/i,
+  )?.[1];
+  const filename = encodedFilename
+    ? decodeURIComponent(encodedFilename)
+    : quotedFilename ?? 'schedules.csv';
+
+  return { blob: response.data as Blob, filename };
 };

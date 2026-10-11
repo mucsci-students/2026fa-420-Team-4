@@ -1,13 +1,28 @@
 """Export generated schedules as JSON or CSV."""
 
 import csv
+import io
 import json
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 
 
-def _choose_export_path() -> str:
+def schedule_export_filename(source_filename: str | None, extension: str) -> str:
+    """Build a safe schedules filename from the loaded configuration filename."""
+    extension = extension.lower()
+    if extension not in (".json", ".csv"):
+        raise ValueError("Schedule export extension must be .json or .csv")
+
+    source_basename = (source_filename or "").replace("\\", "/").rsplit("/", 1)[-1]
+    source_stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", Path(source_basename).stem)
+    source_stem = source_stem.strip(" .")
+    stem = f"{source_stem}_schedules" if source_stem else "schedules"
+    return f"{stem}{extension}"
+
+
+def _choose_export_path(initial_filename: str = "schedules.json") -> str:
     """Open a save dialog and return the selected destination, if any."""
     import tkinter as tk
     from tkinter import filedialog
@@ -19,6 +34,7 @@ def _choose_export_path() -> str:
         return filedialog.asksaveasfilename(
             title="Export schedules",
             defaultextension=".json",
+            initialfile=initial_filename,
             filetypes=(("JSON files", "*.json"), ("CSV files", "*.csv")),
         )
     finally:
@@ -83,17 +99,46 @@ def _csv_value(value):
     return value
 
 
-def export_schedules(schedules: Sequence[object]) -> Path | None:
+def schedules_to_csv(schedules: Sequence[object]) -> str:
+    """Serialize schedules as CSV text without opening a local file dialog."""
+    if isinstance(schedules, (str, bytes)) or not isinstance(schedules, Sequence):
+        raise TypeError("schedules must be a sequence of schedule objects")
+
+    schedule_data = [_to_serializable(schedule) for schedule in schedules]
+    rows = _csv_rows(schedule_data)
+    fieldnames = list(dict.fromkeys(key for row in rows for key in row))
+    output = io.StringIO(newline="")
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    if fieldnames:
+        writer.writeheader()
+        writer.writerows(
+            {
+                key: "'" + value
+                if isinstance(value, str) and value.startswith(("=", "+", "-", "@", "\t", "\r"))
+                else _csv_value(value)
+                for key, value in row.items()
+            }
+            for row in rows
+        )
+    return output.getvalue()
+
+
+def export_schedules(
+    schedules: Sequence[object], source_filename: str | None = None
+) -> Path | None:
     """Export an array of schedule objects after the user chooses a destination.
 
     The destination extension selects JSON or CSV. Returning ``None`` means the
-    user cancelled the save dialog.
+    user cancelled the save dialog. ``source_filename`` supplies the base name
+    for the suggested ``*_schedules`` export filename.
     """
     if isinstance(schedules, (str, bytes)) or not isinstance(schedules, Sequence):
         raise TypeError("schedules must be a sequence of schedule objects")
 
     schedule_data = [_to_serializable(schedule) for schedule in schedules]
-    selected_path = _choose_export_path()
+    selected_path = _choose_export_path(
+        schedule_export_filename(source_filename, ".json")
+    )
     if not selected_path:
         return None
 
@@ -106,17 +151,7 @@ def export_schedules(schedules: Sequence[object]) -> Path | None:
             encoding="utf-8",
         )
     elif file_format == ".csv":
-        rows = _csv_rows(schedule_data)
-        # Use the union of all row keys so schedules with different fields fit.
-        fieldnames = list(dict.fromkeys(key for row in rows for key in row))
-        with path.open("w", newline="", encoding="utf-8") as stream:
-            writer = csv.DictWriter(stream, fieldnames=fieldnames)
-            if fieldnames:
-                writer.writeheader()
-                writer.writerows(
-                    {key: _csv_value(value) for key, value in row.items()}
-                    for row in rows
-                )
+        path.write_text(schedules_to_csv(schedule_data), encoding="utf-8", newline="")
     else:
         raise ValueError("Choose a destination ending in .json or .csv")
 

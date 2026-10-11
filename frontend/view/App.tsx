@@ -1,37 +1,53 @@
 // frontend/view/App.tsx
-import React, { useState } from 'react';
-import { uploadConfig } from './api';
+import { useRef, useState } from 'react';
+import axios from 'axios';
+import type { OpenedConfigFile } from './front_controllers/configFileController';
+import { formatConfigErrors } from './configErrorMessages';
 
-export function App() {
-  const [file, setFile] = useState<File | null>(null);
+interface AppProps {
+  onConfigSelected: (config: unknown) => void;
+  onChooseFile: (file: File) => Promise<OpenedConfigFile>;
+  onCreateNew: () => void;
+}
+
+export function App({
+  onConfigSelected,
+  onChooseFile,
+  onCreateNew,
+}: AppProps) {
+  const fileInput = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string>('');
   const [errors, setErrors] = useState<string[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!file) return;
-    setLoading(true);
+  const handleChooseFile = async (selectedFile: File | undefined) => {
+    if (!selectedFile) return;
     setErrors([]);
-    setStatus('Uploading configuration...');
+    setStatus('Loading configuration file...');
 
     try {
-      const res = await uploadConfig(file);
-      setStatus(res.message || 'Config loaded successfully!');
-    } catch (err: any) {
-      setStatus('Upload failed.');
-      if (err.response?.data?.detail?.errors) {
-        setErrors(err.response.data.detail.errors);
+      const selected = await onChooseFile(selectedFile);
+      onConfigSelected(selected.config);
+      setStatus(
+        `Loaded ${selected.file.name} into the editor. "Save Changes" will download the edited configuration with the same filename.`,
+      );
+    } catch (error) {
+      setStatus('Could not open configuration file.');
+      if (
+        axios.isAxiosError<{
+          detail?: { errors?: string[] } | string;
+        }>(error)
+      ) {
+        const detail = error.response?.data?.detail;
+        setErrors(formatConfigErrors(
+          typeof detail === 'string'
+            ? [detail]
+            : detail?.errors ?? [error.message],
+        ));
       } else {
-        setErrors([err.response?.data?.detail || err.message]);
+        setErrors(formatConfigErrors([
+          error instanceof Error ? error.message : 'Invalid JSON file.',
+        ]));
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -45,25 +61,46 @@ export function App() {
           <button
             type="button"
             onClick={() => {
-              setFile(null);
-              setStatus('New blank configuration started.');
+              onCreateNew();
+              setStatus('Success: New configuration created. Save Changes downloads it as new-config.json.');
               setErrors([]);
             }}
           >
             Create New Config
           </button>
         </div>
-        <input type="file" accept=".json" onChange={handleFileChange} />
-        <button onClick={handleUpload} disabled={!file || loading} style={{ marginLeft: '10px' }}>
-          {loading ? 'Loading...' : 'Load Config'}
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".json,application/json"
+          onChange={(event) => {
+            void handleChooseFile(event.target.files?.[0]);
+            event.currentTarget.value = '';
+          }}
+          style={{ display: 'none' }}
+        />
+        <button type="button" onClick={() => fileInput.current?.click()}>
+          Choose File
         </button>
       </div>
 
-      {status && <p><strong>Status:</strong> {status}</p>}
+      {status && (
+        <p
+          role="status"
+          style={{
+            color: status.startsWith('Success:') ? '#166534' : undefined,
+            background: status.startsWith('Success:') ? '#dcfce7' : undefined,
+            padding: status.startsWith('Success:') ? '10px' : undefined,
+            borderRadius: status.startsWith('Success:') ? '4px' : undefined,
+          }}
+        >
+          <strong>Status:</strong> {status}
+        </p>
+      )}
       {errors.length > 0 && (
-        <div style={{ background: '#ffe6e6', color: '#900', padding: '10px', borderRadius: '4px' }}>
-          <h4>Diagnostics / Errors:</h4>
-          <ul>
+        <div role="alert" style={{ background: '#fef2f2', color: '#991b1b', padding: '12px 16px', border: '1px solid #fecaca', borderRadius: '6px' }}>
+          <h4 style={{ margin: '0 0 8px' }}>Please fix these configuration issues:</h4>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
             {errors.map((err, idx) => (
               <li key={idx}>{err}</li>
             ))}
