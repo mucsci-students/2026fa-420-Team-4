@@ -21,11 +21,15 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
 
     if limit == 0:
         store.schedule = []
+        store.generation_running = False
         return {
             "status": "success",
             "count": 0,
             "schedules": [],
         }
+
+    store.generation_running = True
+    store.generation_progess = 0
 
     try:
         # Instantiate scheduler with loaded CombinedConfig object
@@ -39,16 +43,26 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
 
         # Iterate over generated schedules
         for schedule_idx, model in enumerate(scheduler.get_models(), start=1):
+            print (f"Processing schedule {schedule_idx}")
             schedules.append({
                 "schedule_id": schedule_idx,
                 "courses": [course.as_csv() for course in model]
             })
+            store.generation_progess = schedule_idx
 
         store.schedule = schedules
+        store.generation_running = False
         return {
             "status": "success",
             "count": len(schedules),
             "schedules": schedules
         }
     except Exception as e:
+        store.generation_running = False
         raise HTTPException(status_code=500, detail=f"Scheduling error: {str(e)}")
+@router.get("/progress")
+def get_generator_progress():
+    return {
+        "count": store.generation_progess,
+        "running": store.generation_running
+    }

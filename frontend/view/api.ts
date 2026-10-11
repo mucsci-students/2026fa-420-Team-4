@@ -68,3 +68,11 @@ export const exportScheduleCsv = async () => {
 
   return { blob: response.data as Blob, filename };
 };
+
+export const getGeneratorProgress = async (): Promise<{
+  count: number;
+  running: boolean;
+}> => {
+  const response = await api.get('/generator/progress');
+  return response.data;
+};
