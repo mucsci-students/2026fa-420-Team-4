@@ -3,11 +3,13 @@ import { useRef, useState } from 'react';
 import axios from 'axios';
 import type { OpenedConfigFile } from './front_controllers/configFileController';
 import { formatConfigErrors } from './configErrorMessages';
+import RetroConfirmDialog from './RetroConfirmDialog';
 
 interface AppProps {
   onConfigSelected: (config: unknown) => void;
   onChooseFile: (file: File) => Promise<OpenedConfigFile>;
   onCreateNew: () => void;
+  hasUnsavedChanges: boolean;
   onStatusChange: (message: string) => void;
 }
 
@@ -16,15 +18,17 @@ export function App({
   onConfigSelected,
   onChooseFile,
   onCreateNew,
+  hasUnsavedChanges,
   onStatusChange,
 }: AppProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string>('');
   const [errors, setErrors] = useState<string[]>([]);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [confirmCreate, setConfirmCreate] = useState(false);
 
   /** Open a selected configuration and report loading results; ignore an empty selection. */
-  const handleChooseFile = async (selectedFile: File | undefined) => {
-    if (!selectedFile) return;
+  const openConfigFile = async (selectedFile: File) => {
     setErrors([]);
     setStatus('Loading configuration file...');
     onStatusChange('Loading configuration file...');
@@ -58,6 +62,22 @@ export function App({
     }
   };
 
+  const handleChooseFile = (selectedFile: File | undefined) => {
+    if (!selectedFile) return;
+    if (hasUnsavedChanges) {
+      setPendingFile(selectedFile);
+      return;
+    }
+    void openConfigFile(selectedFile);
+  };
+
+  const createNewConfig = () => {
+    onCreateNew();
+    setStatus('Success: New configuration created. Save Changes downloads it as new-config.json.');
+    onStatusChange('New configuration created.');
+    setErrors([]);
+  };
+
   return (
     <div className="config-start-screen">
       <h1>Configuration Editor</h1>
@@ -68,10 +88,11 @@ export function App({
           <button
             type="button"
             onClick={() => {
-              onCreateNew();
-              setStatus('Success: New configuration created. Save Changes downloads it as new-config.json.');
-              onStatusChange('New configuration created.');
-              setErrors([]);
+              if (hasUnsavedChanges) {
+                setConfirmCreate(true);
+              } else {
+                createNewConfig();
+              }
             }}
           >
             Create New Config
@@ -114,6 +135,31 @@ export function App({
             ))}
           </ul>
         </div>
+      )}
+      {pendingFile && (
+        <RetroConfirmDialog
+          title="Discard Unsaved Changes"
+          message="Discard unsaved configuration changes and load another file?"
+          confirmLabel="Discard and Load"
+          onCancel={() => setPendingFile(null)}
+          onConfirm={() => {
+            const fileToLoad = pendingFile;
+            setPendingFile(null);
+            void openConfigFile(fileToLoad);
+          }}
+        />
+      )}
+      {confirmCreate && (
+        <RetroConfirmDialog
+          title="Discard Unsaved Changes"
+          message="Discard unsaved configuration changes and create a new configuration?"
+          confirmLabel="Discard and Create"
+          onCancel={() => setConfirmCreate(false)}
+          onConfirm={() => {
+            setConfirmCreate(false);
+            createNewConfig();
+          }}
+        />
       )}
     </div>
   );
