@@ -26,6 +26,9 @@ export default function ScheduleGenerator({
   const [generationLimit, setGenerationLimit] = useState(
     DEFAULT_GENERATION_LIMIT,
   );
+  const [generationLimitInput, setGenerationLimitInput] = useState(
+    String(DEFAULT_GENERATION_LIMIT),
+  );
   const [optimizerFlags, setOptimizerFlags] = useState<string[]>([]);
   const [generatedScheduleCount, setGeneratedScheduleCount] = useState(0);
   const [generationStatus, setGenerationStatus] = useState(
@@ -96,10 +99,10 @@ export default function ScheduleGenerator({
     setGenerationStatus("Generating schedules...");
     onStatusChange("Generating schedules...");
     try {
-      if (configFile) {
+      if (configFile && generationLimit > 0) {
         await uploadConfig(generationSettingsController.toFile());
       }
-      const result = await runGenerator();
+      const result = await runGenerator(generationLimit);
       setGeneratedScheduleCount(result.count);
       setGenerationStatus(`Generated ${result.count} schedule(s).`);
       onStatusChange(`Generated ${result.count} schedule(s).`);
@@ -227,16 +230,23 @@ export default function ScheduleGenerator({
                   id="generation-limit"
                   disabled={configFile === null}
                   type="number"
-                  min={1}
-                  value={generationLimit}
+                  min={0}
+                  step={1}
+                  value={generationLimitInput}
                   onChange={(event) => {
-                    const value = Number(event.target.value);
-                    if (Number.isSafeInteger(value) && value >= 1) {
+                    const input = event.target.value;
+                    setGenerationLimitInput(input);
+                    if (/^\d+$/.test(input)) {
+                      const value = Number(input);
+                      if (!Number.isSafeInteger(value)) return;
                       setGenerationLimit(value);
                       if (configFile) {
                         generationSettingsController.setLimit(value);
                       }
                     }
+                  }}
+                  onBlur={() => {
+                    setGenerationLimitInput(String(generationLimit));
                   }}
                   style={{
                     width: 200,
@@ -249,7 +259,8 @@ export default function ScheduleGenerator({
                 />{" "}
                 <p style={{ marginBottom: 0, color: "#64748b", fontSize: 12 }}>
                   {" "}
-                  Number of schedules the generator should produce.{" "}
+                  Number of schedules the generator should produce. Enter 0 to
+                  clear generated schedules without generating any.{" "}
                 </p>{" "}
               </div>{" "}
               {/* Optimizer Flags */}{" "}

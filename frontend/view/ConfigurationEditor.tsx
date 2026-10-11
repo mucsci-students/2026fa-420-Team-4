@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import App from "./App";
 import { validateConfig } from "./api";
@@ -650,23 +650,69 @@ export default function ConfigurationEditor({
   const [editorSaveStatus, setEditorSaveStatusState] = useState("");
   const [editorSaveFailed, setEditorSaveFailed] = useState(false);
   const [editorSaving, setEditorSaving] = useState(false);
-  const [editorDraftStatus, setEditorDraftStatusState] = useState("");
+  const [editorDraftStatus, setEditorDraftStatus] = useState("");
   const [editorDraftErrors, setEditorDraftErrors] = useState<string[]>([]);
   const [editorDraftChecking, setEditorDraftChecking] = useState(false);
-  const [editorDraftValid, setEditorDraftValid] = useState(false);
-  const [editorAddingRow, setEditorAddingRow] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     menu: string;
     rowIndex: number;
   } | null>(null);
   const [editorFileController] = useState(createConfigFileController);
+  const validationRequestId = useRef(0);
   const setEditorSaveStatus = (message: string) => {
     setEditorSaveStatusState(message);
     if (message) onStatusChange(message);
   };
-  const setEditorDraftStatus = (message: string) => {
-    setEditorDraftStatusState(message);
-    if (message) onStatusChange(message);
+  const clearEditorValidationStatus = () => {
+    setEditorSaveStatusState("");
+    setEditorSaveFailed(false);
+  };
+  const validateEditorDraft = async (
+    draftTables: Record<string, ConfigTableRow[]>,
+    baselineConfig = originalEditorConfig,
+  ) => {
+    if (baselineConfig === null || !editorFileName) return;
+
+    const requestId = ++validationRequestId.current;
+    setEditorDraftChecking(true);
+    setEditorDraftStatus("Checking changes...");
+    setEditorDraftErrors([]);
+    try {
+      const draftConfig = applyConfigTableRows(baselineConfig, draftTables);
+      const draftFile = new File(
+        [`${JSON.stringify(draftConfig, null, 2)}\n`],
+        editorFileName,
+        { type: "application/json" },
+      );
+      await validateConfig(draftFile);
+      if (requestId !== validationRequestId.current) return;
+      setEditorDraftStatus("Changes pass validation.");
+    } catch (error) {
+      if (requestId !== validationRequestId.current) return;
+      let messages = [
+        error instanceof Error
+          ? error.message
+          : "Could not validate the configuration changes.",
+      ];
+      if (
+        axios.isAxiosError<{
+          detail?: { errors?: string[] } | string;
+        }>(error)
+      ) {
+        const detail = error.response?.data?.detail;
+        if (typeof detail === "string") {
+          messages = [detail];
+        } else if (detail?.errors?.length) {
+          messages = detail.errors;
+        }
+      }
+      setEditorDraftStatus("Changes need attention.");
+      setEditorDraftErrors(formatConfigErrors(messages));
+    } finally {
+      if (requestId === validationRequestId.current) {
+        setEditorDraftChecking(false);
+      }
+    }
   };
   if (previousSelectedMenu !== selectedMenu) {
     setPreviousSelectedMenu(selectedMenu);
@@ -690,9 +736,10 @@ export default function ConfigurationEditor({
     setEditorDirty(false);
     setEditorSaveStatus("");
     setEditorSaveFailed(false);
+    validationRequestId.current += 1;
     setEditorDraftStatus("");
     setEditorDraftErrors([]);
-    setEditorDraftValid(true);
+    setEditorDraftChecking(false);
     setEditingRowIndex(null);
     setEditedRow({});
     setAddWindowOpen(false);
@@ -702,7 +749,6 @@ export default function ConfigurationEditor({
     file: File,
   ): Promise<OpenedConfigFile> => {
     onStatusChange(`Loading ${file.name}...`);
-    await validateConfig(file);
     const selected = await editorFileController.open(file);
     setEditorFileName(selected.file.name);
     onStatusChange(`${file.name} loaded successfully.`);
@@ -715,175 +761,30 @@ export default function ConfigurationEditor({
     setEditorDirty(true);
     setEditorSaveStatus("");
     setEditorSaveFailed(false);
+    validationRequestId.current += 1;
     setEditorDraftStatus("");
     setEditorDraftErrors([]);
-    setEditorDraftValid(false);
+    setEditorDraftChecking(false);
     setEditingRowIndex(null);
     setEditedRow({});
     setAddWindowOpen(false);
     setNewRow({});
     onStatusChange("New configuration created.");
   };
-  const validateEditorDraft = async (
-    draftTables: Record<string, ConfigTableRow[]>,
-    baselineConfig = originalEditorConfig,
-  ) => {
-    if (baselineConfig === null || !editorFileName) return;
-
-    setEditorDraftChecking(true);
-    setEditorDraftValid(false);
-    setEditorDraftStatus("Checking changes...");
-    setEditorDraftErrors([]);
-    try {
-      const draftConfig = applyConfigTableRows(baselineConfig, draftTables);
-      const draftFile = new File(
-        [`${JSON.stringify(draftConfig, null, 2)}\n`],
-        editorFileName,
-        { type: "application/json" },
-      );
-      await validateConfig(draftFile);
-      setEditorDraftStatus("Changes pass validation.");
-      setEditorDraftValid(true);
-    } catch (error) {
-      let messages = [
-        error instanceof Error
-          ? error.message
-          : "Could not validate the configuration changes.",
-      ];
-      if (
-        axios.isAxiosError<{
-          detail?: { errors?: string[] } | string;
-        }>(error)
-      ) {
-        const detail = error.response?.data?.detail;
-        if (typeof detail === "string") {
-          messages = [detail];
-        } else if (detail?.errors?.length) {
-          messages = detail.errors;
-        }
-      }
-      setEditorDraftStatus("Changes need attention.");
-      setEditorDraftErrors(formatConfigErrors(messages));
-      setEditorDraftValid(false);
-    } finally {
-      setEditorDraftChecking(false);
-    }
-  };
-  const getValidationErrors = (error: unknown): string[] | null => {
-    if (
-      !axios.isAxiosError<{
-        detail?: { errors?: string[] } | string;
-      }>(error)
-    ) {
-      return null;
-    }
-
-    const detail = error.response?.data?.detail;
-    if (typeof detail === "string") return [detail];
-    return detail?.errors ?? null;
-  };
-  const compareCandidateValidation = async (
-    draftTables: Record<string, ConfigTableRow[]>,
-  ): Promise<{ newErrors: string[]; candidateErrors: string[] }> => {
-    if (originalEditorConfig === null || !editorFileName) {
-      throw new Error("Create a new configuration or choose a file first.");
-    }
-
-    const toValidationFile = (tables: Record<string, ConfigTableRow[]>) =>
-      new File(
-        [
-          `${JSON.stringify(
-            applyConfigTableRows(originalEditorConfig, tables),
-            null,
-            2,
-          )}\n`,
-        ],
-        editorFileName,
-        { type: "application/json" },
-      );
-
-    let candidateErrors: string[];
-    try {
-      await validateConfig(toValidationFile(draftTables));
-      return { newErrors: [], candidateErrors: [] };
-    } catch (error) {
-      candidateErrors = getValidationErrors(error) ?? [
-        error instanceof Error
-          ? error.message
-          : "Could not validate the new item.",
-      ];
-    }
-
-    let existingErrors: string[];
-    try {
-      await validateConfig(toValidationFile(configRows));
-      existingErrors = [];
-    } catch (error) {
-      const validationErrors = getValidationErrors(error);
-      if (!validationErrors) throw error;
-      existingErrors = validationErrors;
-    }
-
-    const existingErrorCounts = new Map<string, number>();
-    for (const error of existingErrors) {
-      existingErrorCounts.set(error, (existingErrorCounts.get(error) ?? 0) + 1);
-    }
-    const newErrors = candidateErrors.filter((error) => {
-      const count = existingErrorCounts.get(error) ?? 0;
-      if (count === 0) return true;
-      existingErrorCounts.set(error, count - 1);
-      return false;
-    });
-    return { newErrors, candidateErrors };
-  };
-  const handleAddNewRow = async () => {
+  const handleAddNewRow = () => {
     const currentRows = configRows[selectedMenu] ?? [];
     const updatedTables = {
       ...configRows,
       [selectedMenu]: [...currentRows, prepareRowForCommit(selectedMenu, newRow)],
     };
-    setEditorAddingRow(true);
-    setEditorDraftChecking(true);
-    setEditorDraftStatus("Checking item...");
-    setEditorDraftErrors([]);
-    try {
-      const { newErrors, candidateErrors } = await compareCandidateValidation(updatedTables);
-      if (newErrors.length > 0) {
-        setEditorDraftStatus("Item has invalid fields.");
-        setEditorDraftErrors(formatConfigErrors(newErrors));
-        setEditorDraftValid(false);
-        return;
-      }
-
-      setConfigRows(updatedTables);
-      setEditorDirty(true);
-      setAddWindowOpen(false);
-      setNewRow({});
-      if (candidateErrors.length === 0) {
-        setEditorDraftStatus("Item added. Changes pass validation.");
-        setEditorDraftErrors([]);
-        setEditorDraftValid(true);
-      } else {
-        setEditorDraftStatus("Item added. Existing configuration issues remain.");
-        setEditorDraftErrors(formatConfigErrors(candidateErrors));
-        setEditorDraftValid(false);
-      }
-    } catch (error) {
-      setEditorDraftStatus("Could not add item.");
-      setEditorDraftErrors(
-        formatConfigErrors([
-          error instanceof Error
-            ? error.message
-            : "Could not validate the new item.",
-        ]),
-      );
-      setEditorDraftValid(false);
-    } finally {
-      setEditorAddingRow(false);
-      setEditorDraftChecking(false);
-    }
+    setConfigRows(updatedTables);
+    setEditorDirty(true);
+    clearEditorValidationStatus();
+    setAddWindowOpen(false);
+    setNewRow({});
+    void validateEditorDraft(updatedTables);
   };
-  const handleApplyEditedRow = async () => {
+  const handleApplyEditedRow = () => {
     if (editingRowIndex === null) return;
     const updatedTables = {
       ...configRows,
@@ -891,57 +792,20 @@ export default function ConfigurationEditor({
         index === editingRowIndex ? prepareRowForCommit(selectedMenu, editedRow) : row,
       ),
     };
-    setEditorDraftChecking(true);
-    setEditorDraftStatus("Checking edited item...");
-    setEditorDraftErrors([]);
-    try {
-      const { newErrors, candidateErrors } =
-        await compareCandidateValidation(updatedTables);
-      if (newErrors.length > 0) {
-        setEditorDraftStatus("Edited item has invalid fields. Changes were not applied.");
-        setEditorDraftErrors(formatConfigErrors(newErrors));
-        setEditorDraftValid(false);
-        return;
-      }
-
-      setConfigRows(updatedTables);
-      setEditorDirty(true);
-      setEditingRowIndex(null);
-      setEditedRow({});
-      if (candidateErrors.length === 0) {
-        setEditorDraftStatus("Edit applied. Changes pass validation.");
-        setEditorDraftErrors([]);
-        setEditorDraftValid(true);
-      } else {
-        setEditorDraftStatus("Edit applied. Existing configuration issues remain.");
-        setEditorDraftErrors(formatConfigErrors(candidateErrors));
-        setEditorDraftValid(false);
-      }
-    } catch (error) {
-      setEditorDraftStatus("Could not validate edit. Changes were not applied.");
-      setEditorDraftErrors(
-        formatConfigErrors([
-          error instanceof Error
-            ? error.message
-            : "Could not validate the edited item.",
-        ]),
-      );
-      setEditorDraftValid(false);
-    } finally {
-      setEditorDraftChecking(false);
-    }
+    setConfigRows(updatedTables);
+    setEditorDirty(true);
+    clearEditorValidationStatus();
+    setEditingRowIndex(null);
+    setEditedRow({});
+    void validateEditorDraft(updatedTables);
   };
   const handleSaveEditorConfig = async () => {
     if (originalEditorConfig === null || !editorFileName) {
       setEditorSaveStatus("Create a new configuration or choose an existing file before saving.");
       return;
     }
-    if (editorDraftChecking || !editorDraftValid || editorDraftErrors.length > 0) {
-      setEditorSaveStatus("Fix all configuration issues and wait for validation before saving.");
-      setEditorSaveFailed(true);
-      return;
-    }
-
+    validationRequestId.current += 1;
+    setEditorDraftChecking(false);
     setEditorSaving(true);
     setEditorSaveStatus("Validating configuration...");
     setEditorSaveFailed(false);
@@ -953,6 +817,8 @@ export default function ConfigurationEditor({
         { type: "application/json" },
       );
       await validateConfig(configFile);
+      setEditorDraftStatus("Changes pass validation.");
+      setEditorDraftErrors([]);
       editorFileController.save(updatedConfig);
       setOriginalEditorConfig(updatedConfig);
       setEditorDirty(false);
@@ -976,6 +842,8 @@ export default function ConfigurationEditor({
           messages = detail.errors;
         }
       }
+      setEditorDraftStatus("Changes need attention.");
+      setEditorDraftErrors(formatConfigErrors(messages));
       setEditorSaveStatus(formatConfigErrors(messages).join("\n"));
       setEditorSaveFailed(true);
     } finally {
@@ -1262,11 +1130,10 @@ export default function ConfigurationEditor({
               </button>
               <button
                 type="button"
-                disabled={editorDraftChecking}
                 onClick={() => void handleApplyEditedRow()}
                 style={{ padding: "8px 12px", background: "#334155", color: "white", border: 0, borderRadius: 6, flexShrink: 0 }}
               >
-                {editorDraftChecking ? "Checking..." : "Apply"}
+                Apply
               </button>
             </div>
           )}
@@ -1321,7 +1188,6 @@ export default function ConfigurationEditor({
               </button>
               <button
                 type="submit"
-                disabled={editorAddingRow || editorDraftChecking}
                 style={{
                   padding: "8px 12px",
                   background: "#334155",
@@ -1331,11 +1197,13 @@ export default function ConfigurationEditor({
                   flexShrink: 0,
                 }}
               >
-                {editorAddingRow ? "Checking..." : "Add"}
+                Add
               </button>
             </form>
           )}
-          {(editorDraftStatus || editorDraftErrors.length > 0) && (
+          {(editorDraftChecking ||
+            editorDraftStatus ||
+            editorDraftErrors.length > 0) && (
             <div
               className={
                 editorDraftErrors.length > 0
@@ -1349,18 +1217,26 @@ export default function ConfigurationEditor({
                 color: editorDraftErrors.length > 0 ? "#991b1b" : "#166534",
                 background:
                   editorDraftErrors.length > 0 ? "#fef2f2" : "#f0fdf4",
-                border: `1px solid ${editorDraftErrors.length > 0 ? "#fecaca" : "#bbf7d0"
-                  }`,
+                border: `1px solid ${
+                  editorDraftErrors.length > 0 ? "#fecaca" : "#bbf7d0"
+                }`,
                 borderRadius: 6,
               }}
             >
-              <strong>{editorDraftStatus}</strong>
+              <strong>
+                {editorDraftChecking ? "Checking changes..." : editorDraftStatus}
+              </strong>
               {editorDraftErrors.length > 0 && (
                 <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
                   {editorDraftErrors.map((error, index) => (
                     <li key={index}>{error}</li>
                   ))}
                 </ul>
+              )}
+              {editorDraftErrors.length > 0 && (
+                <p style={{ margin: "8px 0 0" }}>
+                  You can continue editing, but fix these issues before saving.
+                </p>
               )}
             </div>
           )}
@@ -1404,8 +1280,6 @@ export default function ConfigurationEditor({
                 !editorFileName ||
                 editorSaving ||
                 editorDraftChecking ||
-                !editorDraftValid ||
-                editorDraftErrors.length > 0 ||
                 editingRowIndex !== null ||
                 addWindowOpen
               }
@@ -1416,9 +1290,10 @@ export default function ConfigurationEditor({
                 background:
                   editorDirty &&
                     editorFileName &&
-                    editorDraftValid &&
+                    !editorSaving &&
                     !editorDraftChecking &&
-                    editorDraftErrors.length === 0
+                    editingRowIndex === null &&
+                    !addWindowOpen
                     ? "#334155"
                     : "#94a3b8",
                 color: "white",
@@ -1426,9 +1301,10 @@ export default function ConfigurationEditor({
                 cursor:
                   editorDirty &&
                     editorFileName &&
-                    editorDraftValid &&
+                    !editorSaving &&
                     !editorDraftChecking &&
-                    editorDraftErrors.length === 0
+                    editingRowIndex === null &&
+                    !addWindowOpen
                     ? "pointer"
                     : "not-allowed",
               }}
@@ -1477,13 +1353,14 @@ export default function ConfigurationEditor({
                         setOriginalEditorConfig(updatedOriginalConfig);
                         setConfigRows(updatedTables);
                         setEditorDirty(true);
-                        setEditingRowIndex(null);
-                        setEditedRow({});
-                        setDeleteTarget(null);
+                        clearEditorValidationStatus();
                         void validateEditorDraft(
                           updatedTables,
                           updatedOriginalConfig,
                         );
+                        setEditingRowIndex(null);
+                        setEditedRow({});
+                        setDeleteTarget(null);
                       }}
                     >
                       Delete

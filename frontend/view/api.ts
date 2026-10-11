@@ -41,8 +41,10 @@ export const getConfig = async () => {
   return response.data;
 };
 
-export const runGenerator = async () => {
-  const response = await api.post('/generator/run');
+export const runGenerator = async (limit: number) => {
+  const response = await api.post('/generator/run', null, {
+    params: { limit },
+  });
   return response.data;
 };
 

@@ -26,9 +26,12 @@ export function createGenerationSettingsController() {
     return config;
   };
 
-  const validateLimit = (limit: number) => {
-    if (!Number.isSafeInteger(limit) || limit < 1) {
-      throw new Error("Generation limit must be a positive integer.");
+  const validateLimit = (limit: number, allowZero = false) => {
+    if (!Number.isSafeInteger(limit) || limit < (allowZero ? 0 : 1)) {
+      const requirement = allowZero
+        ? "a non-negative integer"
+        : "a positive integer";
+      throw new Error(`Generation limit must be ${requirement}.`);
     }
   };
 
@@ -73,7 +76,7 @@ export function createGenerationSettingsController() {
       fileName = "";
     },
     setLimit(limit: number): void {
-      validateLimit(limit);
+      validateLimit(limit, true);
       requireConfig().limit = limit;
     },
     setOptimizerFlags(flags: string[]): void {

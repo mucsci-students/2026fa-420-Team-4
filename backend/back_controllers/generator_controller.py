@@ -1,21 +1,34 @@
 # backend/back_controllers/generator_controller.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from backend.models.session_store import store
 from scheduler import Scheduler
 
 router = APIRouter(prefix="/api/generator", tags=["Generator"])
 
 @router.post("/run")
-def run_generator():
+def run_generator(limit: int | None = Query(default=None, ge=0)):
     if not store.is_loaded or store.config_object is None:
         raise HTTPException(
             status_code=400,
             detail="No configuration loaded. Upload a valid configuration first."
         )
 
+    if limit == 0:
+        store.schedule = []
+        return {
+            "status": "success",
+            "count": 0,
+            "schedules": [],
+        }
+
     try:
         # Instantiate scheduler with loaded CombinedConfig object
-        scheduler = Scheduler(store.config_object)
+        config = (
+            store.config_object.model_copy(update={"limit": limit})
+            if limit is not None
+            else store.config_object
+        )
+        scheduler = Scheduler(config)
         schedules = []
 
         # Iterate over generated schedules
