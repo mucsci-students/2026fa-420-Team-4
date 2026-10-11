@@ -21,7 +21,7 @@ cd ..
 
 ## Run the application
 
-The API and GUI run separately. Start each in its own terminal from the
+The backend and frontend run separately. Start each in separate terminals from the
 repository root.
 
 **Terminal 1 — FastAPI backend**
@@ -57,7 +57,7 @@ npm run build
 
 Vite writes the built assets to `frontend/dist/`.
 
-## Architecture (MVC-style)
+## Architecture
 
 The application separates state/data, presentation, and request/action handling
 in an MVC-style structure:
@@ -77,17 +77,16 @@ in an MVC-style structure:
 
 ## Using the three modes
 
-The left menu switches among **Configuration Editor**,
+The left menu switches from **Configuration Editor**,
 **Schedule Generator**, and **Schedule Viewer**. The Configuration Editor can
 also expand to show its data sections: Rooms, Labs, Courses, Faculty, Timeslots,
 and Class Patterns.
 
 **Representative workflow:** Create or load a configuration in the Configuration
-Editor, add or edit its course and resource rows, validate and save it; load that
-JSON in Schedule Generator, choose a limit and optimizer preferences, and
-generate schedules; then open Schedule Viewer to navigate the available
-schedules, switch between room/lab and faculty groupings, or load and export
-schedule JSON.
+Editor, edit it, validate and save it; load that JSON in Schedule Generator, 
+choose a limit and optimizer preferences, and generate schedules; then open 
+Schedule Viewer to navigate the available schedules, switch between room/lab and 
+faculty groupings, or load and export.
 
 ### Configuration Editor
 
@@ -95,17 +94,14 @@ schedule JSON.
    file to load an existing configuration.
 2. Loading validates the JSON with the backend before opening it. Edit or add
    rows in the appropriate section; changes remain a local draft.
-3. Draft validation runs as edits are committed. Review displayed validation
+3. Draft validation runs as edits are applied. Review displayed validation
    errors, correct them, and select **Save Changes**. Saving validates again;
-   only a valid configuration is downloaded.
+   only a valid configuration can be downloaded.
 4. Deleting a row requires confirmation. Deletion does not automatically update
    other items that refer to it. If a deletion leaves invalid references,
    validation reports the issue and saving does not download the invalid
    configuration; edit those references or restore the deleted item.
 
-Unsaved edits are not written automatically. There is no discard/overwrite
-confirmation when starting a new configuration or loading another one, so save
-the draft before replacing it.
 
 ### Schedule Generator
 
@@ -133,11 +129,11 @@ The Generator offers JSON and CSV exports; the Viewer exports JSON.
 
 ## Schedule JSON format
 
-A schedule object has a `schedule_id` and a `courses` (or `assignments`) array. Assignments identify a
+A schedule object has a `schedule_id` and a `courses` array. `courses` identify a
 course with `course`, `course_str`, `course_id`, or `section`, and contain a
 non-empty `times` (or `meetings`) array. Each meeting has a non-empty `day`, a
-`start`/`start_time` value (minutes after midnight or an `HH:MM` string), and a
-positive integer `duration` in minutes. For example:
+`start`/`start_time` value, and a positive integer `duration` in minutes. For 
+example:
 
 ```json
 [
