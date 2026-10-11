@@ -21,7 +21,11 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
 
     if limit == 0:
         store.schedule = []
+<<<<<<< HEAD
         store.generation_running = False
+=======
+        store.schedule_filename = None
+>>>>>>> develop
         return {
             "status": "success",
             "count": 0,
@@ -46,12 +50,19 @@ def run_generator(limit: int | None = Query(default=None, ge=0)):
             print (f"Processing schedule {schedule_idx}")
             schedules.append({
                 "schedule_id": schedule_idx,
-                "courses": [course.as_csv() for course in model]
+                "courses": [
+                    course.model_dump(mode="json", by_alias=True)
+                    for course in model
+                ],
             })
             store.generation_progess = schedule_idx
 
         store.schedule = schedules
+<<<<<<< HEAD
         store.generation_running = False
+=======
+        store.schedule_filename = None
+>>>>>>> develop
         return {
             "status": "success",
             "count": len(schedules),

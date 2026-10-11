@@ -18,7 +18,9 @@ def schedule_export_filename(source_filename: str | None, extension: str) -> str
     source_basename = (source_filename or "").replace("\\", "/").rsplit("/", 1)[-1]
     source_stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", Path(source_basename).stem)
     source_stem = source_stem.strip(" .")
-    stem = f"{source_stem}_schedules" if source_stem else "schedules"
+    if source_stem and not source_stem.lower().endswith("_schedules"):
+        source_stem = f"{source_stem}_schedules"
+    stem = source_stem or "schedules"
     return f"{stem}{extension}"
 
 
@@ -68,6 +70,15 @@ def _to_serializable(value):
     raise TypeError(
         f"Schedule value of type {type(value).__name__} cannot be converted"
     )
+
+
+def schedules_to_json(schedules: Sequence[object]) -> str:
+    """Serialize schedules as a JSON array without opening a local file dialog."""
+    if isinstance(schedules, (str, bytes)) or not isinstance(schedules, Sequence):
+        raise TypeError("schedules must be a sequence of schedule objects")
+
+    schedule_data = [_to_serializable(schedule) for schedule in schedules]
+    return json.dumps(schedule_data, indent=2, ensure_ascii=False) + "\n"
 
 
 def _csv_rows(schedules):
@@ -146,10 +157,7 @@ def export_schedules(
     file_format = path.suffix.lower()
     if file_format == ".json":
         # JSON keeps each generated schedule together in the outer array.
-        path.write_text(
-            json.dumps(schedule_data, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
+        path.write_text(schedules_to_json(schedule_data), encoding="utf-8")
     elif file_format == ".csv":
         path.write_text(schedules_to_csv(schedule_data), encoding="utf-8", newline="")
     else:

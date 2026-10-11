@@ -15,7 +15,19 @@ export interface ScheduleCourse {
 // Ensure 'export' is explicitly here:
 export interface GeneratedSchedule {
   schedule_id: number;
-  courses: string[];
+  courses: ScheduleAssignment[];
+}
+
+export interface ScheduleAssignment {
+  [key: string]: unknown;
+}
+
+export type ScheduleData = Record<string, unknown> | unknown[];
+
+export interface ScheduleCollection {
+  count: number;
+  schedules: ScheduleData[];
+  source_filename?: string | null;
 }
 
 export const uploadConfig = async (file: File) => {
@@ -49,8 +61,35 @@ export const runGenerator = async (limit: number) => {
   return response.data;
 };
 
-export const exportScheduleCsv = async () => {
-  const response = await api.get('/schedule/export/csv', {
+/** Fetch the schedules currently stored by the backend and their count. */
+export const getAvailableSchedules = async () => {
+  const response = await api.get<ScheduleCollection>('/schedule/available');
+  return response.data;
+};
+
+/** Upload a schedule JSON file and return the replacement schedule collection. */
+export const importScheduleFile = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post<ScheduleCollection>(
+    '/schedule/import',
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return response.data;
+};
+
+/** Clear the backend schedule collection and return the empty result. */
+export const clearAvailableSchedules = async () => {
+  const response = await api.delete<ScheduleCollection>('/schedule/available');
+  return response.data;
+};
+
+export type ScheduleExportFormat = 'json' | 'csv';
+
+/** Fetch a JSON or CSV export blob and derive its filename from response headers. */
+export const exportSchedule = async (format: ScheduleExportFormat) => {
+  const response = await api.get(`/schedule/export/${format}`, {
     responseType: 'blob',
   });
   const contentDisposition = response.headers['content-disposition'] as
@@ -64,7 +103,7 @@ export const exportScheduleCsv = async () => {
   )?.[1];
   const filename = encodedFilename
     ? decodeURIComponent(encodedFilename)
-    : quotedFilename ?? 'schedules.csv';
+    : quotedFilename ?? `schedules.${format}`;
 
   return { blob: response.data as Blob, filename };
 };

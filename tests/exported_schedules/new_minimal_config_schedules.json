@@ -1,0 +1,272 @@
+[
+  {
+    "schedule_id": 1,
+    "courses": [
+      {
+        "faculty": "F1",
+        "room": "R1",
+        "lab": "L1",
+        "course": "CS101.01",
+        "times": [
+          {
+            "day": 1,
+            "start": 540,
+            "duration": 110,
+            "delivery": "in_person"
+          },
+          {
+            "day": 3,
+            "start": 540,
+            "duration": 110,
+            "delivery": "in_person"
+          }
+        ],
+        "lab_index": 0,
+        "reserve_room_during_lab": true
+      }
+    ]
+  },
+  {
+    "schedule_id": 2,
+    "courses": [
+      {
+        "faculty": "F1",
+        "room": "R1",
+        "lab": "L1",
+        "course": "CS101.01",
+        "times": [
+          {
+            "day": 1,
+            "start": 480,
+            "duration": 110,
+            "delivery": "in_person"
+          },
+          {
+            "day": 3,
+            "start": 480,
+            "duration": 110,
+            "delivery": "in_person"
+          }
+        ],
+        "lab_index": 0,
+        "reserve_room_during_lab": true
+      }
+    ]
+  },
+  {
+    "schedule_id": 3,
+    "courses": [
+      {
+        "faculty": "F1",
+        "room": "R1",
+        "lab": "L1",
+        "course": "CS101.01",
+        "times": [
+          {
+            "day": 1,
+            "start": 900,
+            "duration": 110,
+            "delivery": "in_person"
+          },
+          {
+            "day": 3,
+            "start": 900,
+            "duration": 110,
+            "delivery": "in_person"
+          }
+        ],
+        "lab_index": 0,
+        "reserve_room_during_lab": true
+      }
+    ]
+  },
+  {
+    "schedule_id": 4,
+    "courses": [
+      {
+        "faculty": "F1",
+        "room": "R1",
+        "lab": "L1",
+        "course": "CS101.01",
+        "times": [
+          {
+            "day": 1,
+            "start": 1020,
+            "duration": 110,
+            "delivery": "in_person"
+          },
+          {
+            "day": 3,
+            "start": 1020,
+            "duration": 110,
+            "delivery": "in_person"
+          }
+        ],
+        "lab_index": 0,
+        "reserve_room_during_lab": true
+      }
+    ]
+  },
+  {
+    "schedule_id": 5,
+    "courses": [
+      {
+        "faculty": "F1",
+        "room": "R1",
+        "lab": "L1",
+        "course": "CS101.01",
+        "times": [
+          {
+            "day": 1,
+            "start": 1080,
+            "duration": 110,
+            "delivery": "in_person"
+          },
+          {
+            "day": 3,
+            "start": 1080,
+            "duration": 110,
+            "delivery": "in_person"
+          }
+        ],
+        "lab_index": 0,
+        "reserve_room_during_lab": true
+      }
+    ]
+  },
+  {
+    "schedule_id": 6,
+    "courses": [
+      {
+        "faculty": "F1",
+        "room": "R1",
+        "lab": "L1",
+        "course": "CS101.01",
+        "times": [
+          {
+            "day": 1,
+            "start": 960,
+            "duration": 110,
+            "delivery": "in_person"
+          },
+          {
+            "day": 3,
+            "start": 960,
+            "duration": 110,
+            "delivery": "in_person"
+          }
+        ],
+        "lab_index": 0,
+        "reserve_room_during_lab": true
+      }
+    ]
+  },
+  {
+    "schedule_id": 7,
+    "courses": [
+      {
+        "faculty": "F1",
+        "room": "R1",
+        "lab": "L1",
+        "course": "CS101.01",
+        "times": [
+          {
+            "day": 1,
+            "start": 720,
+            "duration": 110,
+            "delivery": "in_person"
+          },
+          {
+            "day": 3,
+            "start": 720,
+            "duration": 110,
+            "delivery": "in_person"
+          }
+        ],
+        "lab_index": 0,
+        "reserve_room_during_lab": true
+      }
+    ]
+  },
+  {
+    "schedule_id": 8,
+    "courses": [
+      {
+        "faculty": "F1",
+        "room": "R1",
+        "lab": "L1",
+        "course": "CS101.01",
+        "times": [
+          {
+            "day": 1,
+            "start": 780,
+            "duration": 110,
+            "delivery": "in_person"
+          },
+          {
+            "day": 3,
+            "start": 780,
+            "duration": 110,
+            "delivery": "in_person"
+          }
+        ],
+        "lab_index": 0,
+        "reserve_room_during_lab": true
+      }
+    ]
+  },
+  {
+    "schedule_id": 9,
+    "courses": [
+      {
+        "faculty": "F1",
+        "room": "R1",
+        "lab": "L1",
+        "course": "CS101.01",
+        "times": [
+          {
+            "day": 1,
+            "start": 660,
+            "duration": 110,
+            "delivery": "in_person"
+          },
+          {
+            "day": 3,
+            "start": 660,
+            "duration": 110,
+            "delivery": "in_person"
+          }
+        ],
+        "lab_index": 0,
+        "reserve_room_during_lab": true
+      }
+    ]
+  },
+  {
+    "schedule_id": 10,
+    "courses": [
+      {
+        "faculty": "F1",
+        "room": "R1",
+        "lab": "L1",
+        "course": "CS101.01",
+        "times": [
+          {
+            "day": 1,
+            "start": 600,
+            "duration": 110,
+            "delivery": "in_person"
+          },
+          {
+            "day": 3,
+            "start": 600,
+            "duration": 110,
+            "delivery": "in_person"
+          }
+        ],
+        "lab_index": 0,
+        "reserve_room_during_lab": true
+      }
+    ]
+  }
+]

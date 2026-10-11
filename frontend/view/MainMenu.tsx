@@ -130,7 +130,10 @@ export default function MainMenu() {
               minHeight: 0,
             }}
           >
-            <ScheduleViewer />
+            <ScheduleViewer
+              isActive={activeOption === "Schedule Viewer"}
+              onStatusChange={setStatusMessage}
+            />
           </div>
         </main>
       </div>
