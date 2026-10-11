@@ -12,6 +12,7 @@ import {
 } from "./front_controllers/generationSettingsController";
 import { formatConfigErrors } from "./configErrorMessages";
 import { exportScheduleFile } from "./front_controllers/scheduleExportController";
+import RetroConfirmDialog from "./RetroConfirmDialog";
 
 const optimizerFlagOptions = [
   { value: "faculty_course", label: "Faculty → Course Preference" },
@@ -37,6 +38,7 @@ export default function ScheduleGenerator({
     String(DEFAULT_GENERATION_LIMIT),
   );
   const [generationLimitError, setGenerationLimitError] = useState("");
+  const [confirmClearSchedules, setConfirmClearSchedules] = useState(false);
   const [optimizerFlags, setOptimizerFlags] = useState<string[]>([]);
   const [generatedScheduleCount, setGeneratedScheduleCount] = useState(0);
   const [generationStatus, setGenerationStatus] = useState(
@@ -112,16 +114,7 @@ export default function ScheduleGenerator({
   };
 
   /** Generate with the current overrides while polling for schedule-count progress. */
-  const handleGenerateSchedule = async () => {
-    if (configFile === null || generationLimitError !== "") return;
-    if (
-      generationLimit === 0 &&
-      !window.confirm(
-        "A generation limit of 0 clears all available schedules. Continue?",
-      )
-    ) {
-      return;
-    }
+  const generateSchedules = async () => {
     setGeneratingSchedules(true);
     setGenerationError("");
     setGenerationStatus("Generating schedules...");
@@ -167,6 +160,15 @@ export default function ScheduleGenerator({
     } finally {
       setGeneratingSchedules(false);
     }
+  };
+
+  const handleGenerateSchedule = () => {
+    if (configFile === null || generationLimitError !== "") return;
+    if (generationLimit === 0) {
+      setConfirmClearSchedules(true);
+      return;
+    }
+    void generateSchedules();
   };
 
   /** Download generated schedules in the selected format and report progress or errors. */
@@ -490,6 +492,18 @@ export default function ScheduleGenerator({
       >
         {exportingSchedule ? "Exporting..." : "Export Generated Schedules"}
       </button>
+      {confirmClearSchedules && (
+        <RetroConfirmDialog
+          title="Clear Available Schedules"
+          message="A generation limit of 0 clears all available schedules. Continue?"
+          confirmLabel="Clear Schedules"
+          onCancel={() => setConfirmClearSchedules(false)}
+          onConfirm={() => {
+            setConfirmClearSchedules(false);
+            void generateSchedules();
+          }}
+        />
+      )}
     </section>
   );
 }

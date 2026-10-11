@@ -2,6 +2,7 @@ import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import type { ScheduleData } from "./api";
 import { createScheduleViewerController } from "./front_controllers/scheduleViewerController";
+import RetroConfirmDialog from "./RetroConfirmDialog";
 
 type ViewMode = "room" | "faculty";
 
@@ -301,6 +302,7 @@ export default function ScheduleViewer({
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [error, setError] = useState("");
+  const [confirmClearSchedules, setConfirmClearSchedules] = useState(false);
 
   useEffect(() => {
     if (!isActive) return;
@@ -383,14 +385,7 @@ export default function ScheduleViewer({
   };
 
   /** Clear stored schedules and viewer selection, reporting any request failure. */
-  const handleClear = async () => {
-    if (
-      !window.confirm(
-        `Clear all ${schedules.length} available schedule(s)? This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
+  const clearSchedules = async () => {
     setActionInProgress(true);
     setError("");
     try {
@@ -406,6 +401,10 @@ export default function ScheduleViewer({
     } finally {
       setActionInProgress(false);
     }
+  };
+
+  const handleClear = () => {
+    setConfirmClearSchedules(true);
   };
 
   /** Download the selected schedule or complete collection and report the result. */
@@ -535,8 +534,6 @@ export default function ScheduleViewer({
       {loading && <p role="status">Loading available schedules...</p>}
       <p>
         Exports are saved to your browser&apos;s configured downloads location.
-        Each JSON export gets a unique timestamped filename to avoid overwriting
-        an earlier export.
       </p>
 
       {schedules.length > 0 && (
@@ -678,6 +675,18 @@ export default function ScheduleViewer({
           No schedules are available. Generate schedules or load a schedule JSON
           file to view them.
         </p>
+      )}
+      {confirmClearSchedules && (
+        <RetroConfirmDialog
+          title="Clear Available Schedules"
+          message={`Clear all ${schedules.length} available schedule(s)? This cannot be undone.`}
+          confirmLabel="Clear Schedules"
+          onCancel={() => setConfirmClearSchedules(false)}
+          onConfirm={() => {
+            setConfirmClearSchedules(false);
+            void clearSchedules();
+          }}
+        />
       )}
     </section>
   );
