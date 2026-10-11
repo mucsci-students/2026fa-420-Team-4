@@ -12,12 +12,17 @@ router = APIRouter(prefix="/api/schedule", tags=["Schedule Export"])
 
 @router.get("/available")
 def get_available_schedules() -> dict:
+    """Return stored schedules and their count, using an empty list when unset."""
     schedules = store.schedule or []
     return {"count": len(schedules), "schedules": schedules}
 
 
 @router.post("/import")
 async def import_schedule_file(file: UploadFile = File(...)) -> dict:
+    """Validate an uploaded JSON export and replace stored schedules and filename.
+
+    Raise HTTP 400 for invalid input without replacing the existing schedules.
+    """
     try:
         schedules = Schedule_importer.load_schedules(
             await file.read(), file.filename or ""
@@ -32,12 +37,17 @@ async def import_schedule_file(file: UploadFile = File(...)) -> dict:
 
 @router.delete("/available")
 def clear_available_schedules() -> dict:
+    """Clear stored schedules and their source filename, returning an empty collection."""
     store.schedule = []
     store.schedule_filename = None
     return {"count": 0, "schedules": []}
 
 
 def _export_schedule(extension: str) -> Response:
+    """Build a JSON or CSV attachment using the schedule or configuration filename.
+
+    Raise HTTP 400 when schedules are absent or HTTP 500 if serialization fails.
+    """
     if not store.schedule:
         raise HTTPException(
             status_code=400,
@@ -74,9 +84,11 @@ def _export_schedule(extension: str) -> Response:
 
 @router.get("/export/json")
 def export_schedule_json() -> Response:
+    """Return stored schedules as a downloadable JSON attachment."""
     return _export_schedule(".json")
 
 
 @router.get("/export/csv")
 def export_schedule_csv() -> Response:
+    """Return stored schedules as a downloadable CSV attachment."""
     return _export_schedule(".csv")

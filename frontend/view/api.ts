@@ -60,11 +60,13 @@ export const runGenerator = async (limit: number) => {
   return response.data;
 };
 
+/** Fetch the schedules currently stored by the backend and their count. */
 export const getAvailableSchedules = async () => {
   const response = await api.get<ScheduleCollection>('/schedule/available');
   return response.data;
 };
 
+/** Upload a schedule JSON file and return the replacement schedule collection. */
 export const importScheduleFile = async (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -76,6 +78,7 @@ export const importScheduleFile = async (file: File) => {
   return response.data;
 };
 
+/** Clear the backend schedule collection and return the empty result. */
 export const clearAvailableSchedules = async () => {
   const response = await api.delete<ScheduleCollection>('/schedule/available');
   return response.data;
@@ -83,6 +86,7 @@ export const clearAvailableSchedules = async () => {
 
 export type ScheduleExportFormat = 'json' | 'csv';
 
+/** Fetch a JSON or CSV export blob and derive its filename from response headers. */
 export const exportSchedule = async (format: ScheduleExportFormat) => {
   const response = await api.get(`/schedule/export/${format}`, {
     responseType: 'blob',

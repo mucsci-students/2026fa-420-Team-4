@@ -14,6 +14,7 @@ INVALID_FILE_MESSAGE = (
 
 
 def _valid_start(value: Any) -> bool:
+    """Accept minutes since midnight or an hour:minute string within one day."""
     if isinstance(value, int) and not isinstance(value, bool):
         return 0 <= value < 24 * 60
     if isinstance(value, str):
@@ -29,6 +30,7 @@ def _valid_start(value: Any) -> bool:
 
 
 def _valid_meeting(meeting: Any) -> bool:
+    """Check that a meeting has a day, valid start, and positive minute duration."""
     if not isinstance(meeting, dict):
         return False
     day = meeting.get("day")
@@ -53,6 +55,7 @@ def _valid_meeting(meeting: Any) -> bool:
 
 
 def _valid_legacy_assignment(assignment: Any) -> bool:
+    """Accept one five-field CSV row with nonempty course and meeting fields."""
     if not isinstance(assignment, str):
         return False
     try:
@@ -68,6 +71,7 @@ def _valid_legacy_assignment(assignment: Any) -> bool:
 
 
 def _valid_assignment(assignment: Any) -> bool:
+    """Validate a legacy CSV assignment or a course object with meeting data."""
     if _valid_legacy_assignment(assignment):
         return True
     if not isinstance(assignment, dict):
@@ -89,6 +93,7 @@ def _valid_assignment(assignment: Any) -> bool:
 
 
 def _valid_schedule(schedule: Any) -> bool:
+    """Validate an assignment list or an identified schedule containing one."""
     if isinstance(schedule, list):
         return all(_valid_assignment(assignment) for assignment in schedule)
     if not isinstance(schedule, dict):

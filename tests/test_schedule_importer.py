@@ -8,6 +8,7 @@ from backend import Schedule_importer
 
 
 def test_import_schedules_returns_exported_schedule_array(monkeypatch, tmp_path):
+    """Verify imports preserve structured assignments and legacy CSV assignments."""
     schedules = [
         [{
             "course": "CS101",
@@ -47,6 +48,7 @@ def test_import_schedules_returns_exported_schedule_array(monkeypatch, tmp_path)
 def test_import_schedules_rejects_invalid_files(
     monkeypatch, tmp_path, filename, contents
 ):
+    """Verify unsupported files, malformed JSON, and invalid schedules are rejected."""
     path = tmp_path / filename
     path.write_text(contents, encoding="utf-8")
     monkeypatch.setattr(Schedule_importer, "_choose_import_path", lambda: str(path))

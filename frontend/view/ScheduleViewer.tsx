@@ -17,10 +17,12 @@ interface DisplayMeeting {
   end: string;
 }
 
+/** Narrow an unknown value to a non-null object that is not an array. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** Extract a display label from a primitive or named object, falling back when absent. */
 function displayValue(value: unknown, fallback = "Not assigned"): string {
   if (typeof value === "string" && value.trim()) return value;
   if (typeof value === "number" || typeof value === "boolean") {
@@ -35,6 +37,7 @@ function displayValue(value: unknown, fallback = "Not assigned"): string {
   return fallback;
 }
 
+/** Format numeric or named weekdays while preserving unrecognized values. */
 function formatDay(value: unknown): string {
   const numericDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   if (typeof value === "number" && Number.isInteger(value)) {
@@ -66,6 +69,7 @@ function formatDay(value: unknown): string {
   return "Not assigned";
 }
 
+/** Format minute counts or clock strings for display, with a fallback for absent values. */
 function formatClock(value: unknown): string {
   if (typeof value === "number" && Number.isFinite(value)) {
     const minutes = Math.max(0, Math.trunc(value));
@@ -83,12 +87,14 @@ function formatClock(value: unknown): string {
   return "Not assigned";
 }
 
+/** Convert an H:MM or HH:MM string to minutes, returning null for other formats. */
 function clockToMinutes(value: string): number | null {
   const match = value.match(/^(\d{1,2}):(\d{2})$/);
   if (!match) return null;
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
+/** Append a minute unit to finite numeric durations or display the supplied value. */
 function formatDuration(value: unknown): string {
   if (typeof value === "number" && Number.isFinite(value)) {
     return `${value} min`;
@@ -96,6 +102,7 @@ function formatDuration(value: unknown): string {
   return displayValue(value);
 }
 
+/** Add a numeric duration to a clock time, falling back when either cannot be used. */
 function calculateEnd(start: string, duration: unknown): string {
   const startMinutes = clockToMinutes(start);
   if (startMinutes === null || typeof duration !== "number") {
@@ -104,6 +111,7 @@ function calculateEnd(start: string, duration: unknown): string {
   return formatClock(startMinutes + duration);
 }
 
+/** Split a legacy CSV row while handling quoted commas and escaped double quotes. */
 function parseCsvFields(line: string): string[] {
   const fields: string[] = [];
   let field = "";
@@ -128,6 +136,7 @@ function parseCsvFields(line: string): string[] {
   return fields;
 }
 
+/** Convert a legacy CSV assignment into display rows with room or lab meeting details. */
 function legacyCsvMeetings(line: string): DisplayMeeting[] {
   const fields = parseCsvFields(line);
   const [course, faculty, room, lab, meetingText] = fields;
@@ -181,6 +190,7 @@ function legacyCsvMeetings(line: string): DisplayMeeting[] {
   });
 }
 
+/** Normalize structured or legacy assignments into display rows, including reserved rooms. */
 function assignmentMeetings(value: unknown): DisplayMeeting[] {
   if (typeof value === "string") return legacyCsvMeetings(value);
   if (!isRecord(value)) {
@@ -249,6 +259,7 @@ function assignmentMeetings(value: unknown): DisplayMeeting[] {
   });
 }
 
+/** Flatten supported schedule containers into displayable course meetings. */
 function scheduleMeetings(schedule: ScheduleData): DisplayMeeting[] {
   if (Array.isArray(schedule)) {
     return schedule.flatMap(assignmentMeetings);
@@ -265,6 +276,7 @@ function scheduleMeetings(schedule: ScheduleData): DisplayMeeting[] {
   return assignments.flatMap(assignmentMeetings);
 }
 
+/** Extract an API error detail or a readable fallback message. */
 function errorMessage(error: unknown): string {
   if (axios.isAxiosError<{ detail?: string }>(error)) {
     return error.response?.data?.detail ?? error.message;
@@ -342,6 +354,7 @@ export default function ScheduleViewer({
     }
   });
 
+  /** Import the selected JSON file, reset selection, and report progress or errors. */
   const handleImport = async (file: File | undefined) => {
     if (!file) return;
     setActionInProgress(true);
@@ -365,6 +378,7 @@ export default function ScheduleViewer({
     }
   };
 
+  /** Clear stored schedules and viewer selection, reporting any request failure. */
   const handleClear = async () => {
     setActionInProgress(true);
     setError("");
@@ -382,6 +396,7 @@ export default function ScheduleViewer({
     }
   };
 
+  /** Download available schedules as JSON and report success or failure. */
   const handleExport = async () => {
     setActionInProgress(true);
     setError("");

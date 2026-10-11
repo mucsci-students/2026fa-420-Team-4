@@ -11,6 +11,7 @@ from backend.models.session_store import store
 
 
 def test_import_schedule_file_replaces_available_schedules(monkeypatch):
+    """Verify a valid upload replaces stored schedules and records its source filename."""
     schedules = [{
         "schedule_id": 1,
         "courses": [{
@@ -38,6 +39,7 @@ def test_import_schedule_file_replaces_available_schedules(monkeypatch):
 def test_import_schedule_file_rejects_invalid_json_without_replacing_schedules(
     monkeypatch,
 ):
+    """Verify malformed JSON returns HTTP 400 and preserves existing schedules."""
     existing_schedules = [{"schedule_id": 3, "courses": []}]
     monkeypatch.setattr(store, "schedule", existing_schedules)
     file = UploadFile(filename="invalid.json", file=BytesIO(b"{"))
@@ -53,6 +55,7 @@ def test_import_schedule_file_rejects_invalid_json_without_replacing_schedules(
 def test_import_schedule_file_rejects_unsupported_data_without_replacing_schedules(
     monkeypatch,
 ):
+    """Verify invalid assignments return HTTP 400 and preserve existing schedules."""
     existing_schedules = [{"schedule_id": 3, "courses": []}]
     monkeypatch.setattr(store, "schedule", existing_schedules)
     file = UploadFile(
@@ -69,6 +72,7 @@ def test_import_schedule_file_rejects_unsupported_data_without_replacing_schedul
 
 
 def test_import_schedule_file_reports_unsupported_extension(monkeypatch):
+    """Verify a CSV upload is rejected without replacing existing schedules."""
     existing_schedules = [{"schedule_id": 3, "courses": []}]
     monkeypatch.setattr(store, "schedule", existing_schedules)
     file = UploadFile(
@@ -85,6 +89,7 @@ def test_import_schedule_file_reports_unsupported_extension(monkeypatch):
 
 
 def test_get_and_clear_available_schedules(monkeypatch):
+    """Verify listing returns stored schedules and clearing removes them and their filename."""
     monkeypatch.setattr(store, "schedule", [{"schedule_id": 1}])
     monkeypatch.setattr(store, "schedule_filename", "schedules.json")
 
@@ -101,8 +106,10 @@ def test_get_and_clear_available_schedules(monkeypatch):
 
 
 def test_generator_stores_structured_course_assignments(monkeypatch):
+    """Verify generation stores JSON-compatible course objects with meeting data."""
     class FakeCourse:
         def model_dump(self, *, mode, by_alias):
+            """Assert JSON serialization options and return a representative course assignment."""
             assert mode == "json"
             assert by_alias is True
             return {
@@ -117,9 +124,11 @@ def test_generator_stores_structured_course_assignments(monkeypatch):
 
     class FakeScheduler:
         def __init__(self, config):
+            """Accept the generator configuration without constructing a real scheduler."""
             pass
 
         def get_models(self):
+            """Yield one synthetic schedule containing the fake course."""
             yield [FakeCourse()]
 
     monkeypatch.setattr(store, "is_loaded", True)

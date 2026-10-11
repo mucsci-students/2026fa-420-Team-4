@@ -18,6 +18,7 @@ def test_schedule_export_filename_falls_back_without_source_filename():
 
 
 def test_schedule_export_filename_does_not_duplicate_schedule_suffix():
+    """Verify an imported export filename keeps a single schedules suffix."""
     assert ScheduleExporter.schedule_export_filename(
         "fall-term_schedules.json", ".json"
     ) == "fall-term_schedules.json"
@@ -52,6 +53,7 @@ def test_schedules_to_csv_serializes_generated_schedule_rows():
 
 
 def test_schedules_to_json_preserves_schedule_array():
+    """Verify JSON serialization preserves the schedule collection on round trip."""
     schedules = [{"schedule_id": 1, "courses": ["CS101"]}]
 
     assert json.loads(ScheduleExporter.schedules_to_json(schedules)) == schedules

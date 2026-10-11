@@ -11,6 +11,7 @@ export function createScheduleViewerController() {
     load: getAvailableSchedules,
     importFile: importScheduleFile,
     clear: clearAvailableSchedules,
+    /** Download the available schedules as a JSON file. */
     exportJson: () => exportScheduleFile("json"),
   };
 }

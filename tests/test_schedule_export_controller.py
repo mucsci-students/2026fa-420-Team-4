@@ -36,6 +36,7 @@ def test_export_schedule_csv_requires_generated_schedules(monkeypatch):
 
 
 def test_export_schedule_json_returns_generated_json(monkeypatch):
+    """Verify JSON attachment content, media type, and configuration-based filename."""
     monkeypatch.setattr(
         store,
         "schedule",
@@ -56,6 +57,7 @@ def test_export_schedule_json_returns_generated_json(monkeypatch):
 
 
 def test_export_schedule_json_requires_generated_schedules(monkeypatch):
+    """Verify JSON export rejects a session without schedules with HTTP 400."""
     monkeypatch.setattr(store, "schedule", None)
 
     with pytest.raises(HTTPException) as exc_info:

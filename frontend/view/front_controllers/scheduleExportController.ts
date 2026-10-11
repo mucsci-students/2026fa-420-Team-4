@@ -1,5 +1,6 @@
 import { exportSchedule, type ScheduleExportFormat } from "../api";
 
+/** Download schedules in the requested format and release the temporary object URL. */
 export async function exportScheduleFile(
   format: ScheduleExportFormat,
 ): Promise<void> {
