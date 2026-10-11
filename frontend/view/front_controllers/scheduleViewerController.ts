@@ -12,8 +12,11 @@ export function createScheduleViewerController() {
     load: getAvailableSchedules,
     importFile: importScheduleFile,
     clear: clearAvailableSchedules,
-    /** Download the selected schedule or full collection as a JSON file. */
-    exportJson: (schedules: ScheduleData[], name: string) =>
-      exportSchedulesAsJson(schedules, name),
+    /** Download the selected schedule or full collection with a source-based JSON filename. */
+    exportJson: (
+      schedules: ScheduleData[],
+      sourceFilename: string | null | undefined,
+      scheduleNumber?: number,
+    ) => exportSchedulesAsJson(schedules, sourceFilename, scheduleNumber),
   };
 }

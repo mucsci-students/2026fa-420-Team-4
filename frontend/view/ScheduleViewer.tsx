@@ -295,6 +295,7 @@ export default function ScheduleViewer({
   const fileInput = useRef<HTMLInputElement>(null);
   const [controller] = useState(createScheduleViewerController);
   const [schedules, setSchedules] = useState<ScheduleData[]>([]);
+  const [sourceFilename, setSourceFilename] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("room");
   const [loading, setLoading] = useState(true);
@@ -309,6 +310,7 @@ export default function ScheduleViewer({
       .then((result) => {
         if (!active) return;
         setSchedules(result.schedules);
+        setSourceFilename(result.source_filename ?? null);
         setSelectedIndex((index) => index < result.schedules.length ? index : 0);
         setError("");
       })
@@ -364,6 +366,7 @@ export default function ScheduleViewer({
     try {
       const result = await controller.importFile(file);
       setSchedules(result.schedules);
+      setSourceFilename(result.source_filename ?? file.name);
       setSelectedIndex(0);
       const message =
         `Loaded ${result.count} schedule(s) from ${file.name}. ` +
@@ -386,6 +389,7 @@ export default function ScheduleViewer({
     try {
       await controller.clear();
       setSchedules([]);
+      setSourceFilename(null);
       setSelectedIndex(0);
       onStatusChange("Available schedules cleared.");
     } catch (clearError) {
@@ -413,7 +417,8 @@ export default function ScheduleViewer({
       }
       const filename = controller.exportJson(
         exportedSchedules,
-        scope === "selected" ? `schedule-${selectedIndex + 1}` : "schedules",
+        sourceFilename,
+        scope === "selected" ? selectedIndex + 1 : undefined,
       );
       onStatusChange(
         `JSON export download started: ${filename}. Check your browser's downloads location.`,

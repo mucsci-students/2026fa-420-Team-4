@@ -27,6 +27,7 @@ export type ScheduleData = Record<string, unknown> | unknown[];
 export interface ScheduleCollection {
   count: number;
   schedules: ScheduleData[];
+  source_filename?: string | null;
 }
 
 export const uploadConfig = async (file: File) => {

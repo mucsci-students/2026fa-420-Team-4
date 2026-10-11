@@ -122,7 +122,11 @@ faculty groupings, or load and export.
    schedules. Choose **View by Room / Lab** or **View by Faculty** to regroup
    the displayed meetings.
 3. **Export Selected JSON** downloads the current schedule;
-   **Export All JSON** downloads all of the schedules. 
+   **Export All JSON** downloads all of the schedules. Names follow
+   `<originalfilename>_schedule<number>.json` and
+   `<originalfilename>_allschedules.json`. The browser saves downloads to its
+   configured location and handles repeated filenames according to its download
+   settings.
    **Clear Schedules** removes the available collection.
 
 The Generator offers JSON and CSV exports; the Viewer exports JSON.
@@ -150,5 +154,4 @@ example:
   }
 ]
 ```
-
 

@@ -22,18 +22,33 @@ export async function exportScheduleFile(
   downloadBlob(blob, filename);
 }
 
-/** Download the supplied schedules as UTF-8 JSON using a unique filename. */
+/** Download the supplied schedules as UTF-8 JSON using the requested source-based filename. */
 export function exportSchedulesAsJson(
   schedules: ScheduleData[],
-  name: string,
+  sourceFilename: string | null | undefined,
+  scheduleNumber?: number,
 ): string {
   const content = JSON.stringify(schedules, null, 2);
   if (content === undefined) {
     throw new Error("Schedule data could not be serialized as JSON.");
   }
 
-  const timestamp = new Date().toISOString().replace(/[-:.]/g, "");
-  const filename = `${name}-${timestamp}-${crypto.randomUUID()}.json`;
+  const sourceBasename = (sourceFilename ?? "")
+    .replaceAll("\\", "/")
+    .split("/")
+    .pop() ?? "";
+  const sourceStem = sourceBasename.replace(/\.[^.]*$/, "");
+  const safeStem = Array.from(sourceStem, (character) =>
+    /[<>:"/\\|?*]/.test(character) || character.charCodeAt(0) < 32
+      ? "_"
+      : character,
+  )
+    .join("")
+    .trim()
+    .replace(/[. ]+$/, "");
+  const filename = scheduleNumber === undefined
+    ? `${safeStem || "schedules"}_allschedules.json`
+    : `${safeStem || "schedules"}_schedule${scheduleNumber}.json`;
   const blob = new Blob([`${content}\n`], {
     type: "application/json;charset=utf-8",
   });
