@@ -62,7 +62,7 @@ export function createGenerationSettingsController() {
       if (typeof limit !== "number") {
         throw new Error("Configuration limit must be a number.");
       }
-      validateLimit(limit);
+      validateLimit(limit, true);
       if (!Array.isArray(optimizerFlags) ||
           optimizerFlags.some((flag) => typeof flag !== "string")) {
         throw new Error("Configuration optimizer_flags must be an array of strings.");

@@ -222,6 +222,10 @@ a {
   background: #000080;
 }
 
+.retro-nav-button.is-active:focus-visible {
+  outline-color: #fff;
+}
+
 .retro-nav-submenu {
   margin: 3px 0 8px 12px;
   padding-left: 8px;

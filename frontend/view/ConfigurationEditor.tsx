@@ -139,7 +139,7 @@ const listFields: Record<string, string[]> = {
   Rooms: ["Features"],
   Labs: ["Features"],
   Courses: [
-    "Room(s)",
+    "Room",
     "Lab",
     "Conflicts",
     "Faculty",
@@ -1130,7 +1130,7 @@ export default function ConfigurationEditor({
               }}
             >
               {configTableColumns[selectedMenu].map((column) => (
-                <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
+                <label key={`${editingRowIndex}-${column}`} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
                   {column}
                   <ConfigFieldEditor
                     menu={selectedMenu}

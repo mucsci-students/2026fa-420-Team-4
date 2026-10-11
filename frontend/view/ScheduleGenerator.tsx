@@ -67,6 +67,7 @@ export default function ScheduleGenerator({
       await uploadConfig(generationSettingsController.toFile());
       setConfigFile(file);
       setGenerationLimit(settings.limit);
+      setGenerationLimitInput(String(settings.limit));
       setOptimizerFlags(settings.optimizer_flags);
       setConfigStatus(`${file.name} loaded successfully.`);
       onStatusChange(`${file.name} loaded successfully.`);
@@ -107,8 +108,11 @@ export default function ScheduleGenerator({
       }
       const result = await runGenerator(generationLimit);
       setGeneratedScheduleCount(result.count);
-      setGenerationStatus(`Generated ${result.count} schedule(s).`);
-      onStatusChange(`Generated ${result.count} schedule(s).`);
+      const message = generationLimit === 0
+        ? "Schedules cleared."
+        : `Generated ${result.count} schedule(s).`;
+      setGenerationStatus(message);
+      onStatusChange(message);
     } catch (error) {
       setGeneratedScheduleCount(0);
       setGenerationStatus("Schedule generation failed.");
