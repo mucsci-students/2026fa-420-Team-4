@@ -12,9 +12,13 @@ router = APIRouter(prefix="/api/schedule", tags=["Schedule Export"])
 
 @router.get("/available")
 def get_available_schedules() -> dict:
-    """Return stored schedules and their count, using an empty list when unset."""
+    """Return stored schedules, their count, and the source filename, if known."""
     schedules = store.schedule or []
-    return {"count": len(schedules), "schedules": schedules}
+    return {
+        "count": len(schedules),
+        "schedules": schedules,
+        "source_filename": store.schedule_filename or store.config_filename,
+    }
 
 
 @router.post("/import")
@@ -32,7 +36,11 @@ async def import_schedule_file(file: UploadFile = File(...)) -> dict:
 
     store.schedule = schedules
     store.schedule_filename = file.filename
-    return {"count": len(schedules), "schedules": schedules}
+    return {
+        "count": len(schedules),
+        "schedules": schedules,
+        "source_filename": store.schedule_filename,
+    }
 
 
 @router.delete("/available")
@@ -40,7 +48,7 @@ def clear_available_schedules() -> dict:
     """Clear stored schedules and their source filename, returning an empty collection."""
     store.schedule = []
     store.schedule_filename = None
-    return {"count": 0, "schedules": []}
+    return {"count": 0, "schedules": [], "source_filename": None}
 
 
 def _export_schedule(extension: str) -> Response:
