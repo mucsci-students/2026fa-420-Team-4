@@ -15,7 +15,7 @@ class SessionStore:
         self.is_loaded: bool = False
 
     def reset(self):
-        """Clear configuration, schedules, and generator progress."""
+        """Clear configuration, schedules, source filenames, and the loaded flag."""
         self.generation_progess = 0
         self.generation_running = False
         self.raw_config = {}
