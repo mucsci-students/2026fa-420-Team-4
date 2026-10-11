@@ -55,7 +55,7 @@ cd frontend
 npm run build
 ```
 
-Vite writes the built assets to `frontend/dist/`.
+Vite writes the built assets to `frontend/dist/`
 
 ## Architecture
 
