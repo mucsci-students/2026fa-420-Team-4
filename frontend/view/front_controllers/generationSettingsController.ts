@@ -50,6 +50,12 @@ export function createGenerationSettingsController() {
   };
 
   return {
+    /**
+     * Parse a JSON file and retain its configuration and filename after validating
+     * a non-negative safe-integer limit and supported optimizer flags. Return the
+     * settings, defaulting missing values to 10 schedules and no optimizer flags.
+     * Reject unreadable or invalid files without replacing the loaded configuration.
+     */
     async open(file: File): Promise<GenerationSettings> {
       const parsed: unknown = JSON.parse(await file.text());
       if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
