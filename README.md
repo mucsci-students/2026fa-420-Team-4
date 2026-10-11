@@ -6,7 +6,7 @@
 
 A web application interface for generating, validating, and managing course schedules.
 
-The application uses a FastAPI backend and a Vite + React + TypeScript frontend, powered by MUCSCI Scheduler
+This application uses a FastAPI backend and a Vite + React + TypeScript frontend, powered by MUCSCI Scheduler
 
 ---
 ## Prerequisites
