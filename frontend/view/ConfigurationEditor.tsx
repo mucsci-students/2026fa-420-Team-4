@@ -17,16 +17,7 @@ import {
 } from "./front_controllers/configFileController";
 import { formatConfigErrors } from "./configErrorMessages";
 import { configDraftController } from "./front_controllers/configDraftController";
-
-//Config draft type and elements that can later be referenced...
-type ConfigDraft = {
-  id: string;
-  fileName: string;
-  savedAt: number;
-  originalConfig: unknown;
-  configRows: Record<string, ConfigTableRow[]>;
-  selectedMenu: string;
-};
+import type { ConfigDraft } from "./front_controllers/configDraftController";
 
 function formatTableValue(value: unknown): string {
   if (Array.isArray(value)) {
@@ -707,28 +698,6 @@ function beginDraftSession(): string {
   return id;
 }
 
-useEffect(() => {
-  if (!activeDraftId || !editorDirty || !editorFileName || originalEditorConfig === null) {
-    return;
-  }
-
-  configDraftController.save({
-    id: activeDraftId,
-    fileName: editorFileName,
-    savedAt: Date.now(),
-    originalConfig: originalEditorConfig,
-    configRows,
-    selectedMenu,
-  });
-}, [
-  activeDraftId,
-  editorDirty,
-  editorFileName,
-  originalEditorConfig,
-  configRows,
-  selectedMenu,
-]);
-
 //  Restore draft handler
 function restoreDraft(draft: ConfigDraft): void {
   setActiveDraftId(draft.id);
@@ -739,6 +708,15 @@ function restoreDraft(draft: ConfigDraft): void {
   setOriginalEditorConfig(draft.originalConfig);
   setConfigRows(draft.configRows);
   setEditorDirty(true);
+  setEditorSaveStatus("");
+  setEditorSaveFailed(false);
+  setEditorDraftStatus("");
+  setEditorDraftErrors([]);
+  setEditorDraftChecking(false);
+  setEditingRowIndex(null);
+  setEditedRow({});
+  setAddWindowOpen(false);
+  setNewRow({});
 }
 
 
@@ -797,6 +775,30 @@ function restoreDraft(draft: ConfigDraft): void {
     setAddWindowOpen(false);
     setNewRow({});
   }
+
+  useEffect(() => {
+    if (!activeDraftId || !editorDirty || !editorFileName || originalEditorConfig === null) {
+      return;
+    }
+
+    configDraftController.save({
+      id: activeDraftId,
+      fileName: editorFileName,
+      savedAt: Date.now(),
+      originalConfig: originalEditorConfig,
+      configRows,
+      selectedMenu,
+    });
+    setRecoverableDrafts(configDraftController.list());
+  }, [
+    activeDraftId,
+    editorDirty,
+    editorFileName,
+    originalEditorConfig,
+    configRows,
+    selectedMenu,
+  ]);
+
   useEffect(() => {
     if (!deleteTarget) return;
 
@@ -809,6 +811,7 @@ function restoreDraft(draft: ConfigDraft): void {
   }, [deleteTarget]);
   /** Load configuration rows and reset editing and validation state, invalidating pending checks. */
   const handleEditorConfigSelected = (config: unknown) => {
+    beginDraftSession();
     setOriginalEditorConfig(config);
     setConfigRows(getConfigTableRows(config));
     setEditorDirty(false);
@@ -836,6 +839,7 @@ function restoreDraft(draft: ConfigDraft): void {
   };
   /** Initialize an empty configuration and reset editor state for a new file. */
   const handleCreateNewConfig = () => {
+    beginDraftSession();
     setEditorFileName(editorFileController.create());
     setOriginalEditorConfig({});
     setConfigRows({});
@@ -903,16 +907,15 @@ function restoreDraft(draft: ConfigDraft): void {
       await validateConfig(configFile);
       setEditorDraftStatus("Changes pass validation.");
       setEditorDraftErrors([]);
-      editorFileController.save(updatedConfig);
       setOriginalEditorConfig(updatedConfig);
       setEditorDirty(false);
       setEditorSaveStatus("Configuration validated and saved successfully.");
       setEditorSaveFailed(false);
-        editorFileController.save(updatedConfig);
-    configDraftController.remove(activeDraftId);
-    setRecoverableDrafts(configDraftController.list());
-    setOriginalEditorConfig(updatedConfig);
-    setEditorDirty(false);
+      editorFileController.save(updatedConfig);
+      configDraftController.remove(activeDraftId);
+      setRecoverableDrafts(configDraftController.list());
+      setOriginalEditorConfig(updatedConfig);
+      setEditorDirty(false);
     } catch (error) {
       let messages = [
         error instanceof Error
@@ -961,6 +964,8 @@ function restoreDraft(draft: ConfigDraft): void {
             onConfigSelected={handleEditorConfigSelected}
             onChooseFile={handleChooseEditorFile}
             onCreateNew={handleCreateNewConfig}
+            recoverableDrafts={recoverableDrafts}
+            onRestoreDraft={restoreDraft}
             onStatusChange={onStatusChange}
           />{" "}
         </div>
@@ -1400,11 +1405,7 @@ function restoreDraft(draft: ConfigDraft): void {
               }}
             >
               {editorSaving ? "Saving..." : "Save Changes"}
-            </button>{recoverableDrafts.map((draft) => (
-                <button key={draft.id} type="button" onClick={() => restoreDraft(draft)}>// Recover Drafts button
-                  Restore unsaved changes to {draft.fileName}
-                </button>
-                ))}
+            </button>
           </div>
           {deleteTarget && (
             <div className="retro-dialog-backdrop">
