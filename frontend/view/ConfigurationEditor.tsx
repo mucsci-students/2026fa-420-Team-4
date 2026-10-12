@@ -16,6 +16,8 @@ import {
   type OpenedConfigFile,
 } from "./front_controllers/configFileController";
 import { formatConfigErrors } from "./configErrorMessages";
+import { configDraftController } from "./front_controllers/configDraftController";
+import type { ConfigDraft } from "./front_controllers/configDraftController";
 
 function formatTableValue(value: unknown): string {
   if (Array.isArray(value)) {
@@ -692,6 +694,43 @@ export default function ConfigurationEditor({
     setEditorSaveStatusState("");
     setEditorSaveFailed(false);
   };
+  
+  // for Drafting
+  const [activeDraftId, setActiveDraftId] = useState("");
+  const [recoverableDrafts, setRecoverableDrafts] = useState(
+  () => configDraftController.list(),
+);
+
+
+function beginDraftSession(): string {
+  const id = crypto.randomUUID();
+  setActiveDraftId(id);
+  configDraftController.setActiveId(id);
+  return id;
+}
+
+//  Restore draft handler
+function restoreDraft(draft: ConfigDraft): void {
+  setActiveDraftId(draft.id);
+  configDraftController.setActiveId(draft.id);
+
+  setEditorFileName(draft.fileName);
+  editorFileController.setFileName(draft.fileName);
+  setOriginalEditorConfig(draft.originalConfig);
+  setConfigRows(draft.configRows);
+  setEditorDirty(true);
+  setEditorSaveStatus("");
+  setEditorSaveFailed(false);
+  setEditorDraftStatus("");
+  setEditorDraftErrors([]);
+  setEditorDraftChecking(false);
+  setEditingRowIndex(null);
+  setEditedRow({});
+  setAddWindowOpen(false);
+  setNewRow({});
+}
+
+
   /** Validate draft tables against the baseline configuration and ignore superseded responses. */
   const validateEditorDraft = async (
     draftTables: Record<string, ConfigTableRow[]>,
@@ -747,6 +786,30 @@ export default function ConfigurationEditor({
     setAddWindowOpen(false);
     setNewRow({});
   }
+
+  useEffect(() => {
+    if (!activeDraftId || !editorDirty || !editorFileName || originalEditorConfig === null) {
+      return;
+    }
+
+    configDraftController.save({
+      id: activeDraftId,
+      fileName: editorFileName,
+      savedAt: Date.now(),
+      originalConfig: originalEditorConfig,
+      configRows,
+      selectedMenu,
+    });
+    setRecoverableDrafts(configDraftController.list());
+  }, [
+    activeDraftId,
+    editorDirty,
+    editorFileName,
+    originalEditorConfig,
+    configRows,
+    selectedMenu,
+  ]);
+
   useEffect(() => {
     if (!deleteTarget) return;
 
@@ -759,6 +822,7 @@ export default function ConfigurationEditor({
   }, [deleteTarget]);
   /** Load configuration rows and reset editing and validation state, invalidating pending checks. */
   const handleEditorConfigSelected = (config: unknown) => {
+    beginDraftSession();
     setOriginalEditorConfig(config);
     setConfigRows(getConfigTableRows(config));
     setEditorDirty(false);
@@ -786,6 +850,7 @@ export default function ConfigurationEditor({
   };
   /** Initialize an empty configuration and reset editor state for a new file. */
   const handleCreateNewConfig = () => {
+    beginDraftSession();
     setEditorFileName(editorFileController.create());
     setOriginalEditorConfig({});
     setConfigRows({});
@@ -853,11 +918,15 @@ export default function ConfigurationEditor({
       await validateConfig(configFile);
       setEditorDraftStatus("Changes pass validation.");
       setEditorDraftErrors([]);
-      editorFileController.save(updatedConfig);
       setOriginalEditorConfig(updatedConfig);
       setEditorDirty(false);
       setEditorSaveStatus("Configuration validated and saved successfully.");
       setEditorSaveFailed(false);
+      editorFileController.save(updatedConfig);
+      configDraftController.remove(activeDraftId);
+      setRecoverableDrafts(configDraftController.list());
+      setOriginalEditorConfig(updatedConfig);
+      setEditorDirty(false);
     } catch (error) {
       let messages = [
         error instanceof Error
@@ -906,7 +975,12 @@ export default function ConfigurationEditor({
             onConfigSelected={handleEditorConfigSelected}
             onChooseFile={handleChooseEditorFile}
             onCreateNew={handleCreateNewConfig}
+<<<<<<< HEAD
+            recoverableDrafts={recoverableDrafts}
+            onRestoreDraft={restoreDraft}
+=======
             hasUnsavedChanges={editorDirty}
+>>>>>>> develop
             onStatusChange={onStatusChange}
           />{" "}
         </div>

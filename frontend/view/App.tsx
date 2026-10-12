@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react';
 import axios from 'axios';
 import type { OpenedConfigFile } from './front_controllers/configFileController';
+import type { ConfigDraft } from './front_controllers/configDraftController';
 import { formatConfigErrors } from './configErrorMessages';
 import RetroConfirmDialog from './RetroConfirmDialog';
 
@@ -9,7 +10,12 @@ interface AppProps {
   onConfigSelected: (config: unknown) => void;
   onChooseFile: (file: File) => Promise<OpenedConfigFile>;
   onCreateNew: () => void;
+<<<<<<< HEAD
+  recoverableDrafts: ConfigDraft[];
+  onRestoreDraft: (draft: ConfigDraft) => void;
+=======
   hasUnsavedChanges: boolean;
+>>>>>>> develop
   onStatusChange: (message: string) => void;
 }
 
@@ -18,7 +24,12 @@ export function App({
   onConfigSelected,
   onChooseFile,
   onCreateNew,
+<<<<<<< HEAD
+  recoverableDrafts,
+  onRestoreDraft,
+=======
   hasUnsavedChanges,
+>>>>>>> develop
   onStatusChange,
 }: AppProps) {
   const fileInput = useRef<HTMLInputElement>(null);
@@ -110,6 +121,20 @@ export function App({
           <button type="button" onClick={() => fileInput.current?.click()}>
             Choose File
           </button>
+          {recoverableDrafts.map((draft) => (
+            <button
+              key={draft.id}
+              type="button"
+              onClick={() => {
+                onRestoreDraft(draft);
+                setStatus(`Restored unsaved changes to ${draft.fileName}.`);
+                onStatusChange(`Restored unsaved changes to ${draft.fileName}.`);
+                setErrors([]);
+              }}
+            >
+              Restore {draft.fileName}
+            </button>
+          ))}
         </div>
       </div>
 

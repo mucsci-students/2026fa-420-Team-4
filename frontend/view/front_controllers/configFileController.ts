@@ -15,6 +15,8 @@ export function createConfigFileController() {
     create(): string {
       fileName = "new-config.json";
       return fileName;
+    },setFileName(name: string): void { //restores filename
+      fileName = name;
     },
     clear(): void {
       fileName = null;
