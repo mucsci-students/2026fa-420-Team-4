@@ -16,6 +16,17 @@ import {
   type OpenedConfigFile,
 } from "./front_controllers/configFileController";
 import { formatConfigErrors } from "./configErrorMessages";
+import { configDraftController } from "./front_controllers/configDraftController";
+
+//Config draft type and elements that can later be referenced...
+type ConfigDraft = {
+  id: string;
+  fileName: string;
+  savedAt: number;
+  originalConfig: unknown;
+  configRows: Record<string, ConfigTableRow[]>;
+  selectedMenu: string;
+};
 
 function formatTableValue(value: unknown): string {
   if (Array.isArray(value)) {
@@ -681,6 +692,56 @@ export default function ConfigurationEditor({
     setEditorSaveStatusState("");
     setEditorSaveFailed(false);
   };
+  
+  // for Drafting
+  const [activeDraftId, setActiveDraftId] = useState("");
+  const [recoverableDrafts, setRecoverableDrafts] = useState(
+  () => configDraftController.list(),
+);
+
+
+function beginDraftSession(): string {
+  const id = crypto.randomUUID();
+  setActiveDraftId(id);
+  configDraftController.setActiveId(id);
+  return id;
+}
+
+useEffect(() => {
+  if (!activeDraftId || !editorDirty || !editorFileName || originalEditorConfig === null) {
+    return;
+  }
+
+  configDraftController.save({
+    id: activeDraftId,
+    fileName: editorFileName,
+    savedAt: Date.now(),
+    originalConfig: originalEditorConfig,
+    configRows,
+    selectedMenu,
+  });
+}, [
+  activeDraftId,
+  editorDirty,
+  editorFileName,
+  originalEditorConfig,
+  configRows,
+  selectedMenu,
+]);
+
+//  Restore draft handler
+function restoreDraft(draft: ConfigDraft): void {
+  setActiveDraftId(draft.id);
+  configDraftController.setActiveId(draft.id);
+
+  setEditorFileName(draft.fileName);
+  editorFileController.setFileName(draft.fileName);
+  setOriginalEditorConfig(draft.originalConfig);
+  setConfigRows(draft.configRows);
+  setEditorDirty(true);
+}
+
+
   /** Validate draft tables against the baseline configuration and ignore superseded responses. */
   const validateEditorDraft = async (
     draftTables: Record<string, ConfigTableRow[]>,
@@ -847,6 +908,11 @@ export default function ConfigurationEditor({
       setEditorDirty(false);
       setEditorSaveStatus("Configuration validated and saved successfully.");
       setEditorSaveFailed(false);
+        editorFileController.save(updatedConfig);
+    configDraftController.remove(activeDraftId);
+    setRecoverableDrafts(configDraftController.list());
+    setOriginalEditorConfig(updatedConfig);
+    setEditorDirty(false);
     } catch (error) {
       let messages = [
         error instanceof Error
@@ -1334,7 +1400,11 @@ export default function ConfigurationEditor({
               }}
             >
               {editorSaving ? "Saving..." : "Save Changes"}
-            </button>
+            </button>{recoverableDrafts.map((draft) => (
+                <button key={draft.id} type="button" onClick={() => restoreDraft(draft)}>// Recover Drafts button
+                  Restore unsaved changes to {draft.fileName}
+                </button>
+                ))}
           </div>
           {deleteTarget && (
             <div className="retro-dialog-backdrop">

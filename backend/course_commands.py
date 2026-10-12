@@ -2,6 +2,9 @@ import json
 import config_draft
 
 
+# Create a config instance
+config = config_draft.Config()
+
 # Valid class modalities
 VALID_MODALITIES = {"in_person", "online", "hybrid"}
 
@@ -64,9 +67,6 @@ def course_add(shell, filename):
     try:
         with open(filename, "r") as f:
             data = json.load(f)
-
-        # Create a config instance
-        config = config_draft.Config()
 
         print("\n--- Add New Course ---")
 
