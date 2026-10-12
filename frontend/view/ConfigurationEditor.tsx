@@ -673,6 +673,17 @@ export default function ConfigurationEditor({
   } | null>(null);
   const [editorFileController] = useState(createConfigFileController);
   const validationRequestId = useRef(0);
+
+  useEffect(() => {
+    if (!editorDirty) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [editorDirty]);
+
   /** Update the local save status and publish nonempty messages to the shared status bar. */
   const setEditorSaveStatus = (message: string) => {
     setEditorSaveStatusState(message);
@@ -964,8 +975,12 @@ function restoreDraft(draft: ConfigDraft): void {
             onConfigSelected={handleEditorConfigSelected}
             onChooseFile={handleChooseEditorFile}
             onCreateNew={handleCreateNewConfig}
+<<<<<<< HEAD
             recoverableDrafts={recoverableDrafts}
             onRestoreDraft={restoreDraft}
+=======
+            hasUnsavedChanges={editorDirty}
+>>>>>>> develop
             onStatusChange={onStatusChange}
           />{" "}
         </div>

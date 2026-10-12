@@ -27,6 +27,7 @@ export type ScheduleData = Record<string, unknown> | unknown[];
 export interface ScheduleCollection {
   count: number;
   schedules: ScheduleData[];
+  source_filename?: string | null;
 }
 
 export const uploadConfig = async (file: File) => {
@@ -105,4 +106,12 @@ export const exportSchedule = async (format: ScheduleExportFormat) => {
     : quotedFilename ?? `schedules.${format}`;
 
   return { blob: response.data as Blob, filename };
+};
+
+export const getGeneratorProgress = async (): Promise<{
+  count: number;
+  running: boolean;
+}> => {
+  const response = await api.get('/generator/progress');
+  return response.data;
 };

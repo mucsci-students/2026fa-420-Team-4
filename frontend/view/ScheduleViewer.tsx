@@ -2,6 +2,7 @@ import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import type { ScheduleData } from "./api";
 import { createScheduleViewerController } from "./front_controllers/scheduleViewerController";
+import RetroConfirmDialog from "./RetroConfirmDialog";
 
 type ViewMode = "room" | "faculty";
 
@@ -295,11 +296,13 @@ export default function ScheduleViewer({
   const fileInput = useRef<HTMLInputElement>(null);
   const [controller] = useState(createScheduleViewerController);
   const [schedules, setSchedules] = useState<ScheduleData[]>([]);
+  const [sourceFilename, setSourceFilename] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("room");
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [error, setError] = useState("");
+  const [confirmClearSchedules, setConfirmClearSchedules] = useState(false);
 
   useEffect(() => {
     if (!isActive) return;
@@ -309,6 +312,7 @@ export default function ScheduleViewer({
       .then((result) => {
         if (!active) return;
         setSchedules(result.schedules);
+        setSourceFilename(result.source_filename ?? null);
         setSelectedIndex((index) => index < result.schedules.length ? index : 0);
         setError("");
       })
@@ -364,6 +368,7 @@ export default function ScheduleViewer({
     try {
       const result = await controller.importFile(file);
       setSchedules(result.schedules);
+      setSourceFilename(result.source_filename ?? file.name);
       setSelectedIndex(0);
       const message =
         `Loaded ${result.count} schedule(s) from ${file.name}. ` +
@@ -380,12 +385,13 @@ export default function ScheduleViewer({
   };
 
   /** Clear stored schedules and viewer selection, reporting any request failure. */
-  const handleClear = async () => {
+  const clearSchedules = async () => {
     setActionInProgress(true);
     setError("");
     try {
       await controller.clear();
       setSchedules([]);
+      setSourceFilename(null);
       setSelectedIndex(0);
       onStatusChange("Available schedules cleared.");
     } catch (clearError) {
@@ -397,13 +403,32 @@ export default function ScheduleViewer({
     }
   };
 
-  /** Download available schedules as JSON and report success or failure. */
-  const handleExport = async () => {
+  const handleClear = () => {
+    setConfirmClearSchedules(true);
+  };
+
+  /** Download the selected schedule or complete collection and report the result. */
+  const handleExport = (scope: "selected" | "all") => {
     setActionInProgress(true);
     setError("");
     try {
-      await controller.exportJson();
-      onStatusChange("Schedule data downloaded as JSON.");
+      const exportedSchedules =
+        scope === "selected" && selectedSchedule
+          ? [selectedSchedule]
+          : scope === "all"
+            ? schedules
+            : [];
+      if (exportedSchedules.length === 0) {
+        throw new Error("No schedules are available to export.");
+      }
+      const filename = controller.exportJson(
+        exportedSchedules,
+        sourceFilename,
+        scope === "selected" ? selectedIndex + 1 : undefined,
+      );
+      onStatusChange(
+        `JSON export download started: ${filename}. Check your browser's downloads location.`,
+      );
     } catch (exportError) {
       const message = `Could not export schedules: ${errorMessage(exportError)}`;
       setError(message);
@@ -480,10 +505,17 @@ export default function ScheduleViewer({
         />
         <button
           type="button"
-          onClick={() => void handleExport()}
+          onClick={() => handleExport("selected")}
+          disabled={!selectedSchedule || actionInProgress || loading}
+        >
+          Export Selected JSON
+        </button>
+        <button
+          type="button"
+          onClick={() => handleExport("all")}
           disabled={schedules.length === 0 || actionInProgress || loading}
         >
-          Export JSON
+          Export All JSON
         </button>
         <button
           type="button"
@@ -500,6 +532,9 @@ export default function ScheduleViewer({
         </p>
       )}
       {loading && <p role="status">Loading available schedules...</p>}
+      <p>
+        Exports are saved to your browser&apos;s configured downloads location.
+      </p>
 
       {schedules.length > 0 && (
         <>
@@ -640,6 +675,18 @@ export default function ScheduleViewer({
           No schedules are available. Generate schedules or load a schedule JSON
           file to view them.
         </p>
+      )}
+      {confirmClearSchedules && (
+        <RetroConfirmDialog
+          title="Clear Available Schedules"
+          message={`Clear all ${schedules.length} available schedule(s)? This cannot be undone.`}
+          confirmLabel="Clear Schedules"
+          onCancel={() => setConfirmClearSchedules(false)}
+          onConfirm={() => {
+            setConfirmClearSchedules(false);
+            void clearSchedules();
+          }}
+        />
       )}
     </section>
   );
