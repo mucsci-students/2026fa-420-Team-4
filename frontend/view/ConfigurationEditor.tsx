@@ -1,0 +1,1413 @@
+import { useEffect, useRef, useState } from "react";
+import axios from "axios";
+import App from "./App";
+import { validateConfig } from "./api";
+import {
+  applyConfigTableRows,
+  asObject,
+  configMenus,
+  configTableColumns,
+  getConfigTableRows,
+  removeConfigTableRow,
+  type ConfigTableRow,
+} from "./configEditorModel";
+import {
+  createConfigFileController,
+  type OpenedConfigFile,
+} from "./front_controllers/configFileController";
+import { formatConfigErrors } from "./configErrorMessages";
+
+function formatTableValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map(formatTableValue).filter(Boolean).join(", ");
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value)
+      .map(([key, item]) => {
+        const label = key.replaceAll("_", " ");
+        const formattedValue = formatTableValue(item);
+        return formattedValue ? `${label}: ${formattedValue}` : label;
+      })
+      .join("; ");
+  }
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function formatCellDisplay(value: string | undefined): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    try {
+      return formatTableValue(JSON.parse(trimmed));
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
+/** Summarize time ranges and optional spacing for each day. */
+function formatTimeBlocks(value: unknown): string {
+  const days = asObject(value);
+  return Object.entries(days)
+    .map(([day, blocks]) => {
+      const summaries = Array.isArray(blocks)
+        ? blocks.map((blockValue) => {
+          const block = asObject(blockValue);
+          const range = `${String(block.start ?? "")}–${String(block.end ?? "")}`;
+          return block.spacing
+            ? `${range} (every ${String(block.spacing)} min)`
+            : range;
+        })
+        : [];
+      return `${day}: ${summaries.join(", ") || "unavailable"}`;
+    })
+    .join(" · ");
+}
+
+function formatMeetings(value: unknown): string {
+  if (!Array.isArray(value)) return "";
+  return value
+    .map((meetingValue) => {
+      const meeting = asObject(meetingValue);
+      const start = meeting.start_time ? ` ${String(meeting.start_time)}` : "";
+      const duration = meeting.duration
+        ? `, ${String(meeting.duration)} min`
+        : "";
+      const lab = meeting.lab ? ", lab" : "";
+      const delivery = meeting.delivery ? `, ${String(meeting.delivery)}` : "";
+      return `${String(meeting.day ?? "")}${start}${duration}${lab}${delivery}`;
+    })
+    .join("; ");
+}
+
+function formatConfigCell(
+  menu: string,
+  column: string,
+  value: string | undefined,
+): string {
+  if (!value) return "";
+  if (menu === "Timeslots" && column === "Times") {
+    try {
+      return formatTimeBlocks(JSON.parse(value));
+    } catch {
+      return formatCellDisplay(value);
+    }
+  }
+  if (
+    menu === "Class Patterns" &&
+    column === "Meetings"
+  ) {
+    try {
+      return formatMeetings(JSON.parse(value));
+    } catch {
+      return formatCellDisplay(value);
+    }
+  }
+  if (menu === "Class Patterns" && column === "Disabled") {
+    return value === "true" ? "Disabled" : "Enabled";
+  }
+  return formatCellDisplay(value);
+}
+
+function parseEditorJson(value: string, fallback: unknown): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+const editorDays = ["MON", "TUE", "WED", "THU", "FRI"];
+const preferenceColumns = ["Course Preferences", "Room Preferences", "Lab Preferences"];
+
+/** Remove unnamed faculty preferences before storing a row; leave other sections unchanged. */
+function prepareRowForCommit(menu: string, row: ConfigTableRow): ConfigTableRow {
+  if (menu !== "Faculty") return row;
+  return Object.fromEntries(Object.entries(row).map(([column, value]) => [
+    column,
+    preferenceColumns.includes(column) && value !== ""
+      ? JSON.stringify(Object.fromEntries(
+        Object.entries(asObject(parseEditorJson(value, {})))
+          .filter(([name]) => name.trim() !== ""),
+      ))
+      : value,
+  ]));
+}
+
+const listFields: Record<string, string[]> = {
+  Rooms: ["Features"],
+  Labs: ["Features"],
+  Courses: [
+    "Room",
+    "Lab",
+    "Conflicts",
+    "Faculty",
+    "Alternate Faculty",
+    "Required Room Features",
+    "Required Lab Features",
+  ],
+};
+
+/** Edit a list as comma-separated text and emit JSON, optionally preserving an empty nullable value. */
+function CommaSeparatedListField({
+  column,
+  value,
+  onChange,
+  autoFocus,
+  allowNullWhenEmpty = false,
+}: {
+  column: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoFocus: boolean;
+  allowNullWhenEmpty?: boolean;
+}) {
+  const [text, setText] = useState(() => {
+    const parsed = parseEditorJson(value, []);
+    return Array.isArray(parsed) ? parsed.map(String).join(", ") : value;
+  });
+
+  return (
+    <input
+      autoFocus={autoFocus}
+      aria-label={column}
+      type="text"
+      placeholder="Separate values with commas"
+      value={text}
+      onChange={(event) => {
+        const nextText = event.target.value;
+        setText(nextText);
+        onChange(
+          allowNullWhenEmpty && nextText.trim() === ""
+            ? ""
+            : JSON.stringify(
+                nextText
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter(Boolean),
+              ),
+        );
+      }}
+      style={{
+        display: "block",
+        width: "100%",
+        marginTop: 4,
+        padding: 8,
+        border: "1px solid #cbd5e1",
+        borderRadius: 4,
+        boxSizing: "border-box",
+      }}
+    />
+  );
+}
+
+const structuredEditorStyle = {
+  display: "grid",
+  gap: 12,
+  width: "100%",
+  minWidth: 280,
+  maxHeight: "32vh",
+  overflowY: "auto" as const,
+  marginTop: 4,
+  padding: 12,
+  border: "1px solid #cbd5e1",
+  borderRadius: 4,
+  boxSizing: "border-box" as const,
+  background: "#f8fafc",
+};
+
+/** Render the appropriate input for a configuration cell and emit serialized changes. */
+function ConfigFieldEditor({
+  menu,
+  column,
+  value,
+  onChange,
+  autoFocus = false,
+}: {
+  menu: string;
+  column: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoFocus?: boolean;
+}) {
+  if (
+    menu === "Faculty" &&
+    preferenceColumns.includes(column)
+  ) {
+    const preferencesValue = parseEditorJson(value, {});
+    const preferences = asObject(preferencesValue);
+    const entries = Object.entries(preferences);
+    const updateEntries = (nextEntries: Array<[string, unknown]>) => {
+      onChange(JSON.stringify(Object.fromEntries(nextEntries)));
+    };
+
+    return (
+      <div style={{ ...structuredEditorStyle, maxHeight: "24vh" }}>
+        {entries.map(([name, score], index) => (
+          <div
+            key={index}
+            style={{ display: "flex", alignItems: "end", gap: 8 }}
+          >
+            <label style={{ flex: "1 1 180px", fontSize: 12 }}>
+              {column.replace(" Preferences", "")}
+              <input
+                value={name}
+                onChange={(event) => {
+                  const nextEntries = [...entries] as Array<[string, unknown]>;
+                  nextEntries[index] = [event.target.value, score];
+                  updateEntries(nextEntries);
+                }}
+                style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+              />
+            </label>
+            <label style={{ flex: "0 1 110px", fontSize: 12 }}>
+              Score (0–10)
+              <input
+                type="number"
+                min={0}
+                max={10}
+                value={String(score)}
+                onChange={(event) => {
+                  const nextEntries = [...entries] as Array<[string, unknown]>;
+                  nextEntries[index] = [name, event.target.value === "" ? "" : Number(event.target.value)];
+                  updateEntries(nextEntries);
+                }}
+                style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => updateEntries(entries.filter((_, entryIndex) => entryIndex !== index))}
+              style={{ padding: 7, flexShrink: 0 }}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => {
+            let index = 1;
+            let name = "new";
+            while (Object.prototype.hasOwnProperty.call(preferences, name)) {
+              index += 1;
+              name = `new ${index}`;
+            }
+            updateEntries([...entries, [name, 0]]);
+          }}
+          style={{ justifySelf: "start", padding: "6px 9px" }}
+        >
+          + Add preference
+        </button>
+      </div>
+    );
+  }
+
+  if (menu === "Faculty" && column === "Mandatory Days") {
+    const selectedDaysValue = parseEditorJson(value, []);
+    const selectedDays = Array.isArray(selectedDaysValue)
+      ? selectedDaysValue.map(String)
+      : [];
+    return (
+      <div
+        role="group"
+        aria-label="Mandatory Days"
+        style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}
+      >
+        {editorDays.map((day) => (
+          <label
+            key={day}
+            style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+          >
+            <input
+              type="checkbox"
+              checked={selectedDays.includes(day)}
+              onChange={(event) => {
+                const nextDays = event.target.checked
+                  ? [...selectedDays, day]
+                  : selectedDays.filter((selectedDay) => selectedDay !== day);
+                onChange(JSON.stringify(nextDays));
+              }}
+            />
+            {day}
+          </label>
+        ))}
+      </div>
+    );
+  }
+
+  if (listFields[menu]?.includes(column)) {
+    return (
+      <CommaSeparatedListField
+        column={column}
+        value={value}
+        onChange={onChange}
+        autoFocus={autoFocus}
+        allowNullWhenEmpty={menu === "Courses" && column === "Faculty"}
+      />
+    );
+  }
+
+  if (
+    ["Rooms", "Labs", "Faculty"].includes(menu) &&
+    column === "Times"
+  ) {
+    const times = asObject(parseEditorJson(value, {}));
+    return (
+      <div style={structuredEditorStyle}>
+        {editorDays.map((day) => {
+          const ranges = Array.isArray(times[day]) ? times[day] : [];
+          return (
+            <fieldset
+              key={day}
+              style={{ margin: 0, padding: 10, border: "1px solid #cbd5e1", borderRadius: 4 }}
+            >
+              <legend style={{ padding: "0 4px", fontWeight: "bold" }}>{day}</legend>
+              {ranges.map((rangeValue, index) => {
+                const range = asObject(rangeValue);
+                return (
+                  <div
+                    key={`${day}-${index}`}
+                    style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 8, marginBottom: 8 }}
+                  >
+                    {([
+                      ["start", "Start"],
+                      ["end", "End"],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} style={{ flex: "1 1 120px", fontSize: 12 }}>
+                        {label}
+                        <input
+                          autoFocus={autoFocus && day === editorDays[0] && index === 0 && key === "start"}
+                          aria-label={`${day} ${label}`}
+                          type="time"
+                          value={String(range[key] ?? "")}
+                          onChange={(event) => {
+                            const updatedRanges = ranges.map((entry, rangeIndex) =>
+                              rangeIndex === index
+                                ? { ...asObject(entry), [key]: event.target.value }
+                                : entry,
+                            );
+                            onChange(JSON.stringify({ ...times, [day]: updatedRanges }));
+                          }}
+                          style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+                        />
+                      </label>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => onChange(JSON.stringify({
+                        ...times,
+                        [day]: ranges.filter((_, rangeIndex) => rangeIndex !== index),
+                      }))}
+                      style={{ padding: 7, flexShrink: 0 }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => onChange(JSON.stringify({
+                  ...times,
+                  [day]: [...ranges, { start: "", end: "" }],
+                }))}
+                style={{ padding: "6px 9px" }}
+              >
+                + Add time range
+              </button>
+            </fieldset>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (menu === "Timeslots" && column === "Times") {
+    const times = asObject(
+      parseEditorJson(value, Object.fromEntries(editorDays.map((day) => [day, []]))),
+    );
+    return (
+      <div style={structuredEditorStyle}>
+        {editorDays.map((day) => {
+          const blocks = Array.isArray(times[day]) ? times[day] : [];
+          return (
+            <fieldset
+              key={day}
+              style={{ margin: 0, padding: 10, border: "1px solid #cbd5e1", borderRadius: 4 }}
+            >
+              <legend style={{ padding: "0 4px", fontWeight: "bold" }}>{day}</legend>
+              {blocks.map((blockValue, index) => {
+                const block = asObject(blockValue);
+                return (
+                  <div
+                    key={`${day}-${index}`}
+                    style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 8, marginBottom: 8 }}
+                  >
+                    {([
+                      ["start", "Start", "time"],
+                      ["spacing", "Spacing (min)", "number"],
+                      ["end", "End", "time"],
+                    ] as const).map(([key, label, type]) => (
+                      <label key={key} style={{ flex: "1 1 100px", fontSize: 12 }}>
+                        {label}
+                        <input
+                          autoFocus={autoFocus && day === editorDays[0] && index === 0 && key === "start"}
+                          aria-label={`${day} ${label}`}
+                          type={type}
+                          value={String(block[key] ?? "")}
+                          onChange={(event) => {
+                            const updatedBlocks = blocks.map((entry, blockIndex) =>
+                              blockIndex === index
+                                ? { ...asObject(entry), [key]: type === "number" ? Number(event.target.value) : event.target.value }
+                                : entry,
+                            );
+                            onChange(JSON.stringify({ ...times, [day]: updatedBlocks }));
+                          }}
+                          style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+                        />
+                      </label>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => onChange(JSON.stringify({
+                        ...times,
+                        [day]: blocks.filter((_, blockIndex) => blockIndex !== index),
+                      }))}
+                      style={{ padding: 7, flexShrink: 0 }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => onChange(JSON.stringify({
+                  ...times,
+                  [day]: [...blocks, { start: "", spacing: 60, end: "" }],
+                }))}
+                style={{ padding: "6px 9px" }}
+              >
+                + Add time block
+              </button>
+            </fieldset>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (menu === "Class Patterns" && column === "Meetings") {
+    const meetingsValue = parseEditorJson(value, []);
+    const meetings = Array.isArray(meetingsValue) ? meetingsValue : [];
+    return (
+      <div style={structuredEditorStyle}>
+        {meetings.map((meetingValue, index) => {
+          const meeting = asObject(meetingValue);
+          const updateMeeting = (key: string, nextValue: unknown) => {
+            onChange(JSON.stringify(
+              meetings.map((item, meetingIndex) =>
+                meetingIndex === index
+                  ? { ...asObject(item), [key]: nextValue }
+                  : item,
+              ),
+            ));
+          };
+          return (
+            <fieldset
+              key={`meeting-${index}`}
+              style={{ margin: 0, padding: 10, border: "1px solid #cbd5e1", borderRadius: 4 }}
+            >
+              <legend style={{ padding: "0 4px", fontWeight: "bold" }}>Meeting {index + 1}</legend>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 8 }}>
+                <label style={{ flex: "1 1 100px", fontSize: 12 }}>
+                  Day
+                  <select
+                    value={String(meeting.day ?? "MON")}
+                    onChange={(event) => updateMeeting("day", event.target.value)}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: 7 }}
+                  >
+                    {editorDays.map((day) => <option key={day} value={day}>{day}</option>)}
+                  </select>
+                </label>
+                <label style={{ flex: "1 1 125px", fontSize: 12 }}>
+                  Start time
+                  <input
+                    type="time"
+                    value={String(meeting.start_time ?? "")}
+                    onChange={(event) => updateMeeting("start_time", event.target.value || null)}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+                  />
+                </label>
+                <label style={{ flex: "1 1 100px", fontSize: 12 }}>
+                  Duration (min)
+                  <input
+                    type="number"
+                    value={String(meeting.duration ?? "")}
+                    onChange={(event) => updateMeeting("duration", Number(event.target.value))}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: 7, boxSizing: "border-box" }}
+                  />
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 34, fontSize: 12 }}>
+                  <input
+                    type="checkbox"
+                    checked={meeting.lab === true}
+                    onChange={(event) => updateMeeting("lab", event.target.checked)}
+                  />
+                  Lab meeting
+                </label>
+                <label style={{ flex: "1 1 120px", fontSize: 12 }}>
+                  Delivery
+                  <select
+                    value={String(meeting.delivery ?? "in_person")}
+                    onChange={(event) => updateMeeting("delivery", event.target.value)}
+                    style={{ display: "block", width: "100%", marginTop: 4, padding: 7 }}
+                  >
+                    <option value="in_person">In person</option>
+                    <option value="online">Online</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => onChange(JSON.stringify(meetings.filter((_, meetingIndex) => meetingIndex !== index)))}
+                  style={{ padding: 7, flexShrink: 0 }}
+                >
+                  Remove
+                </button>
+              </div>
+            </fieldset>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => onChange(JSON.stringify([
+            ...meetings,
+            { day: "MON", duration: 60, lab: false, delivery: "in_person", start_time: null },
+          ]))}
+          style={{ justifySelf: "start", padding: "6px 9px" }}
+        >
+          + Add meeting
+        </button>
+      </div>
+    );
+  }
+
+  const isBooleanField =
+    (menu === "Class Patterns" && column === "Disabled") ||
+    (menu === "Courses" && column === "Reserve Room During Lab");
+  if (isBooleanField) {
+    return (
+      <input
+        autoFocus={autoFocus}
+        aria-label={column}
+        type="checkbox"
+        checked={value === "true"}
+        onChange={(event) => onChange(String(event.target.checked))}
+        style={{ display: "block", marginTop: 8 }}
+      />
+    );
+  }
+
+  const isNumberField =
+    (menu === "Timeslots" &&
+      ["Max Time Gap", "Min Time Overlap"].includes(column)) ||
+    (menu === "Class Patterns" && column === "Credits");
+  const isTimeField =
+    (menu === "Class Patterns" && column === "Start Time") ||
+    (menu === "Timeslots" && column === "Start Time");
+  return (
+    <input
+      autoFocus={autoFocus}
+      aria-label={column}
+      type={isNumberField ? "number" : isTimeField ? "time" : "text"}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      style={{
+        display: "block",
+        width: "100%",
+        marginTop: 4,
+        padding: 8,
+        border: "1px solid #cbd5e1",
+        borderRadius: 4,
+        boxSizing: "border-box",
+      }}
+    />
+  );
+}
+
+interface ConfigurationEditorProps {
+  selectedMenu: string;
+  onStatusChange: (message: string) => void;
+}
+
+/** Render the selected configuration section with row editing, validation, and file saving. */
+export default function ConfigurationEditor({
+  selectedMenu,
+  onStatusChange,
+}: ConfigurationEditorProps) {
+  const [previousSelectedMenu, setPreviousSelectedMenu] =
+    useState(selectedMenu);
+  const [addWindowOpen, setAddWindowOpen] = useState(false);
+  const [newRow, setNewRow] = useState<Record<string, string>>({});
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
+  const [editedRow, setEditedRow] = useState<Record<string, string>>({});
+  const [configRows, setConfigRows] = useState<
+    Record<string, ConfigTableRow[]>
+  >({});
+  const [originalEditorConfig, setOriginalEditorConfig] = useState<unknown>(null);
+  const [editorFileName, setEditorFileName] = useState("");
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [editorSaveStatus, setEditorSaveStatusState] = useState("");
+  const [editorSaveFailed, setEditorSaveFailed] = useState(false);
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [editorDraftStatus, setEditorDraftStatus] = useState("");
+  const [editorDraftErrors, setEditorDraftErrors] = useState<string[]>([]);
+  const [editorDraftChecking, setEditorDraftChecking] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    menu: string;
+    rowIndex: number;
+  } | null>(null);
+  const [editorFileController] = useState(createConfigFileController);
+  const validationRequestId = useRef(0);
+
+  useEffect(() => {
+    if (!editorDirty) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [editorDirty]);
+
+  /** Update the local save status and publish nonempty messages to the shared status bar. */
+  const setEditorSaveStatus = (message: string) => {
+    setEditorSaveStatusState(message);
+    if (message) onStatusChange(message);
+  };
+  /** Clear the previous save message and failure flag after an edit. */
+  const clearEditorValidationStatus = () => {
+    setEditorSaveStatusState("");
+    setEditorSaveFailed(false);
+  };
+  /** Validate draft tables against the baseline configuration and ignore superseded responses. */
+  const validateEditorDraft = async (
+    draftTables: Record<string, ConfigTableRow[]>,
+    baselineConfig = originalEditorConfig,
+  ) => {
+    if (baselineConfig === null || !editorFileName) return;
+
+    const requestId = ++validationRequestId.current;
+    setEditorDraftChecking(true);
+    setEditorDraftStatus("Checking changes...");
+    setEditorDraftErrors([]);
+    try {
+      const draftConfig = applyConfigTableRows(baselineConfig, draftTables);
+      const draftFile = new File(
+        [`${JSON.stringify(draftConfig, null, 2)}\n`],
+        editorFileName,
+        { type: "application/json" },
+      );
+      await validateConfig(draftFile);
+      if (requestId !== validationRequestId.current) return;
+      setEditorDraftStatus("Changes pass validation.");
+    } catch (error) {
+      if (requestId !== validationRequestId.current) return;
+      let messages = [
+        error instanceof Error
+          ? error.message
+          : "Could not validate the configuration changes.",
+      ];
+      if (
+        axios.isAxiosError<{
+          detail?: { errors?: string[] } | string;
+        }>(error)
+      ) {
+        const detail = error.response?.data?.detail;
+        if (typeof detail === "string") {
+          messages = [detail];
+        } else if (detail?.errors?.length) {
+          messages = detail.errors;
+        }
+      }
+      setEditorDraftStatus("Changes need attention.");
+      setEditorDraftErrors(formatConfigErrors(messages));
+    } finally {
+      if (requestId === validationRequestId.current) {
+        setEditorDraftChecking(false);
+      }
+    }
+  };
+  if (previousSelectedMenu !== selectedMenu) {
+    setPreviousSelectedMenu(selectedMenu);
+    setEditingRowIndex(null);
+    setEditedRow({});
+    setAddWindowOpen(false);
+    setNewRow({});
+  }
+  useEffect(() => {
+    if (!deleteTarget) return;
+
+    /** Dismiss the deletion confirmation when Escape is pressed. */
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDeleteTarget(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteTarget]);
+  /** Load configuration rows and reset editing and validation state, invalidating pending checks. */
+  const handleEditorConfigSelected = (config: unknown) => {
+    setOriginalEditorConfig(config);
+    setConfigRows(getConfigTableRows(config));
+    setEditorDirty(false);
+    setEditorSaveStatus("");
+    setEditorSaveFailed(false);
+    validationRequestId.current += 1;
+    setEditorDraftStatus("");
+    setEditorDraftErrors([]);
+    setEditorDraftChecking(false);
+    setEditingRowIndex(null);
+    setEditedRow({});
+    setAddWindowOpen(false);
+    setNewRow({});
+  };
+  /** Validate and open a configuration file, returning its contents and reporting load progress. */
+  const handleChooseEditorFile = async (
+    file: File,
+  ): Promise<OpenedConfigFile> => {
+    onStatusChange(`Loading ${file.name}...`);
+    await validateConfig(file);
+    const selected = await editorFileController.open(file);
+    setEditorFileName(selected.file.name);
+    onStatusChange(`${file.name} loaded successfully.`);
+    return selected;
+  };
+  /** Initialize an empty configuration and reset editor state for a new file. */
+  const handleCreateNewConfig = () => {
+    setEditorFileName(editorFileController.create());
+    setOriginalEditorConfig({});
+    setConfigRows({});
+    setEditorDirty(true);
+    setEditorSaveStatus("");
+    setEditorSaveFailed(false);
+    validationRequestId.current += 1;
+    setEditorDraftStatus("");
+    setEditorDraftErrors([]);
+    setEditorDraftChecking(false);
+    setEditingRowIndex(null);
+    setEditedRow({});
+    setAddWindowOpen(false);
+    setNewRow({});
+    onStatusChange("New configuration created.");
+  };
+  /** Append the prepared row, close the add dialog, and validate the updated draft. */
+  const handleAddNewRow = () => {
+    const currentRows = configRows[selectedMenu] ?? [];
+    const updatedTables = {
+      ...configRows,
+      [selectedMenu]: [...currentRows, prepareRowForCommit(selectedMenu, newRow)],
+    };
+    setConfigRows(updatedTables);
+    setEditorDirty(true);
+    clearEditorValidationStatus();
+    setAddWindowOpen(false);
+    setNewRow({});
+    void validateEditorDraft(updatedTables);
+  };
+  /** Apply the prepared row edit and validate the updated draft when a row is selected. */
+  const handleApplyEditedRow = () => {
+    if (editingRowIndex === null) return;
+    const updatedTables = {
+      ...configRows,
+      [selectedMenu]: (configRows[selectedMenu] ?? []).map((row, index) =>
+        index === editingRowIndex ? prepareRowForCommit(selectedMenu, editedRow) : row,
+      ),
+    };
+    setConfigRows(updatedTables);
+    setEditorDirty(true);
+    clearEditorValidationStatus();
+    setEditingRowIndex(null);
+    setEditedRow({});
+    void validateEditorDraft(updatedTables);
+  };
+  /** Validate and download the edited configuration, reporting validation or save failures. */
+  const handleSaveEditorConfig = async () => {
+    if (originalEditorConfig === null || !editorFileName) {
+      setEditorSaveStatus("Create a new configuration or choose an existing file before saving.");
+      return;
+    }
+    validationRequestId.current += 1;
+    setEditorDraftChecking(false);
+    setEditorSaving(true);
+    setEditorSaveStatus("Validating configuration...");
+    setEditorSaveFailed(false);
+    try {
+      const updatedConfig = applyConfigTableRows(originalEditorConfig, configRows);
+      const configFile = new File(
+        [`${JSON.stringify(updatedConfig, null, 2)}\n`],
+        editorFileName,
+        { type: "application/json" },
+      );
+      await validateConfig(configFile);
+      setEditorDraftStatus("Changes pass validation.");
+      setEditorDraftErrors([]);
+      editorFileController.save(updatedConfig);
+      setOriginalEditorConfig(updatedConfig);
+      setEditorDirty(false);
+      setEditorSaveStatus("Configuration validated and saved successfully.");
+      setEditorSaveFailed(false);
+    } catch (error) {
+      let messages = [
+        error instanceof Error
+          ? error.message
+          : "Could not validate and save the configuration file.",
+      ];
+      if (
+        axios.isAxiosError<{
+          detail?: { errors?: string[] } | string;
+        }>(error)
+      ) {
+        const detail = error.response?.data?.detail;
+        if (typeof detail === "string") {
+          messages = [detail];
+        } else if (detail?.errors?.length) {
+          messages = detail.errors;
+        }
+      }
+      setEditorDraftStatus("Changes need attention.");
+      setEditorDraftErrors(formatConfigErrors(messages));
+      setEditorSaveStatus(formatConfigErrors(messages).join("\n"));
+      setEditorSaveFailed(true);
+    } finally {
+      setEditorSaving(false);
+    }
+  };
+  return (
+    <div style={{ width: "100%", height: "100%", minHeight: 0, overflow: "hidden" }}>
+      {/* Configuration Editor */}{" "}
+      {selectedMenu === "Configuration Editor" && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            minHeight: 0,
+            overflow: "hidden",
+            background: "white",
+            border: "1px solid #cbd5e1",
+            borderRadius: 8,
+            padding: 16,
+            boxSizing: "border-box",
+          }}
+        >
+          <App
+            onConfigSelected={handleEditorConfigSelected}
+            onChooseFile={handleChooseEditorFile}
+            onCreateNew={handleCreateNewConfig}
+            hasUnsavedChanges={editorDirty}
+            onStatusChange={onStatusChange}
+          />{" "}
+        </div>
+      )}{" "}
+      {/* Configuration Sections */}{" "}
+      {configMenus.includes(selectedMenu) && (
+        <section
+          style={{
+            display: editorSaveFailed ? "block" : "flex",
+            flexDirection: "column",
+            height: "100%",
+            minHeight: 0,
+            overflowX: "hidden",
+            overflowY: editorSaveFailed ? "scroll" : "hidden",
+            background: "white",
+            border: "1px solid #cbd5e1",
+            borderRadius: 8,
+            padding: 24,
+            boxSizing: "border-box",
+          }}
+        >
+          {" "}
+          <h1 style={{ marginTop: 0, fontSize: 28 }}>{selectedMenu}</h1>{" "}
+          <p style={{ color: "#64748b" }}>
+            {" "}
+          </p>{" "}
+          {/* Render read-only rows from the selected submenu schema. */}
+          <div style={{ flex: 1, minHeight: 0, overflow: "auto", width: "100%" }}>
+            <table
+              style={{
+                width: "100%",
+                minWidth: 900,
+                tableLayout: "fixed",
+                borderCollapse: "collapse",
+                textAlign: "left",
+              }}
+            >
+              <colgroup>
+                <col style={{ width: 76 }} />
+                {configTableColumns[selectedMenu].map((column) => (
+                  <col
+                    key={column}
+                    style={{ width: Math.max(160, column.length * 12 + 40) }}
+                  />
+                ))}
+                <col style={{ width: 170 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    style={{
+                      padding: 10,
+                      borderBottom: "2px solid #cbd5e1",
+                      borderRight: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      textAlign: "center",
+                    }}
+                  >
+                    #
+                  </th>
+                  {configTableColumns[selectedMenu].map((column) => (
+                    <th
+                      key={column}
+                      scope="col"
+                      style={{
+                        padding: 10,
+                        borderBottom: "2px solid #cbd5e1",
+                        borderRight: "1px solid #e2e8f0",
+                        background: "#f8fafc",
+                        textAlign: "center",
+                      }}
+                    >
+                      {column}
+                    </th>
+                  ))}
+                  <th
+                    scope="col"
+                    style={{
+                      padding: 10,
+                      borderBottom: "2px solid #cbd5e1",
+                      borderLeft: "1px solid #e2e8f0",
+                      background: "#f8fafc",
+                      textAlign: "center",
+                    }}
+                  >
+                    Actions
+                  </th>
+
+                </tr>
+              </thead>
+              <tbody>
+                {(configRows[selectedMenu] ?? []).map((row, rowIndex) => (
+                  <tr key={`${selectedMenu}-${rowIndex}`} style={{ height: 48 }}>
+                    <td
+                      style={{
+                        height: 48,
+                        padding: 8,
+                        borderBottom: "1px solid #e2e8f0",
+                        textAlign: "center",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {rowIndex + 1}
+                    </td>
+                    {configTableColumns[selectedMenu].map((column) => (
+                      <td
+                        key={column}
+                        style={{
+                          height: 48,
+                          padding: 8,
+                          borderBottom: "1px solid #e2e8f0",
+                          overflowWrap: "anywhere",
+                          whiteSpace: "normal",
+                          textAlign: "center",
+                        }}
+                      >
+                        {formatConfigCell(selectedMenu, column, row[column])}
+                      </td>
+                    ))}
+                    <td
+                      style={{
+                        position: "relative",
+                        height: 48,
+                        padding: 8,
+                        borderBottom: "1px solid #e2e8f0",
+                        textAlign: "center",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        aria-label={`Edit ${selectedMenu} row ${rowIndex + 1}`}
+                        onClick={() => {
+                          setEditedRow({ ...row });
+                          setEditingRowIndex(rowIndex);
+                        }}
+                        style={{
+                          padding: "7px 8px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          background: "white",
+                          color: "#0f172a",
+                          fontSize: 12,
+                          cursor: "pointer",
+                          marginRight: 4,
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Delete ${selectedMenu} row ${rowIndex + 1}`}
+                        onClick={() => setDeleteTarget({
+                          menu: selectedMenu,
+                          rowIndex,
+                        })}
+                        style={{
+                          padding: "7px 8px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 4,
+                          background: "white",
+                          color: "#0f172a",
+                          fontSize: 12,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {editingRowIndex === null && !addWindowOpen && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexShrink: 0,
+                marginTop: 12,
+                padding: "10px 12px",
+                background: "#d7d7d7",
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
+              }}
+            >
+              <span style={{ color: "#475569", fontSize: 13 }}>
+                Add to {selectedMenu}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewRow(Object.fromEntries(configTableColumns[selectedMenu].map((column) => [column, ""])));
+                  setAddWindowOpen(true);
+                }}
+                style={{
+                  padding: "6px 10px",
+                  border: 0,
+                  borderRadius: 6,
+                  background: "#334155",
+                  color: "#f8fafc",
+                  fontSize: 13,
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                + Add
+              </button>
+            </div>
+          )}
+          {editingRowIndex !== null && (
+            <div
+              role="region"
+              aria-label={`Edit ${selectedMenu} row`}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 12,
+                flexShrink: 0,
+                maxHeight: "45%",
+                marginTop: 12,
+                padding: 16,
+                background: "white",
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
+                overflow: "auto",
+              }}
+            >
+              {configTableColumns[selectedMenu].map((column) => (
+                <label key={`${editingRowIndex}-${column}`} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
+                  {column}
+                  <ConfigFieldEditor
+                    menu={selectedMenu}
+                    column={column}
+                    value={editedRow[column] ?? ""}
+                    onChange={(value) =>
+                      setEditedRow((current) => ({ ...current, [column]: value }))
+                    }
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingRowIndex(null);
+                  setEditedRow({});
+                }}
+                style={{ padding: "8px 12px", flexShrink: 0 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleApplyEditedRow()}
+                style={{ padding: "8px 12px", background: "#334155", color: "white", border: 0, borderRadius: 6, flexShrink: 0 }}
+              >
+                Apply
+              </button>
+            </div>
+          )}
+          {addWindowOpen && (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleAddNewRow();
+              }}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+                gap: 12,
+                flexShrink: 0,
+                maxHeight: "45%",
+                marginTop: 12,
+                padding: 16,
+                background: "#d7d7d7",
+                border: "1px solid #cbd5e1",
+                borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(15, 23, 42, 0.18)",
+                overflow: "auto",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+                <span style={{ fontWeight: "bold", color: "#0f172a" }}>Add {selectedMenu}</span>
+              </div>
+              {configTableColumns[selectedMenu].map((column) => (
+                <label key={column} style={{ flex: "1 0 120px", fontSize: 12, color: "#475569" }}>
+                  {column}
+                  <ConfigFieldEditor
+                    menu={selectedMenu}
+                    column={column}
+                    value={newRow[column] ?? ""}
+                    autoFocus={column === configTableColumns[selectedMenu][0]}
+                    onChange={(value) =>
+                      setNewRow((current) => ({ ...current, [column]: value }))
+                    }
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setAddWindowOpen(false);
+                  setNewRow({});
+                }}
+                style={{ padding: "8px 12px", flexShrink: 0 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={{
+                  padding: "8px 12px",
+                  background: "#334155",
+                  color: "white",
+                  border: 0,
+                  borderRadius: 6,
+                  flexShrink: 0,
+                }}
+              >
+                Add
+              </button>
+            </form>
+          )}
+          {(editorDraftChecking ||
+            editorDraftStatus ||
+            editorDraftErrors.length > 0) && (
+            <div
+              className={
+                editorDraftErrors.length > 0
+                  ? "retro-validation-errors"
+                  : undefined
+              }
+              role={editorDraftErrors.length > 0 ? "alert" : "status"}
+              style={{
+                marginTop: 12,
+                padding: "10px 14px",
+                color: editorDraftErrors.length > 0 ? "#991b1b" : "#166534",
+                background:
+                  editorDraftErrors.length > 0 ? "#fef2f2" : "#f0fdf4",
+                border: `1px solid ${
+                  editorDraftErrors.length > 0 ? "#fecaca" : "#bbf7d0"
+                }`,
+                borderRadius: 6,
+              }}
+            >
+              <strong>
+                {editorDraftChecking ? "Checking changes..." : editorDraftStatus}
+              </strong>
+              {editorDraftErrors.length > 0 && (
+                <ul style={{ margin: "8px 0 0", paddingLeft: 20 }}>
+                  {editorDraftErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              )}
+              {editorDraftErrors.length > 0 && (
+                <p style={{ margin: "8px 0 0" }}>
+                  You can continue editing, but fix these issues before saving.
+                </p>
+              )}
+            </div>
+          )}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexShrink: 0,
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: "1px solid #cbd5e1",
+            }}
+          >
+            <div>
+              {editorFileName && (
+                <span style={{ color: "#475569", fontSize: 13 }}>
+                  Editing {editorFileName}
+                </span>
+              )}
+              {editorSaveStatus && (
+                <p
+                  role={editorSaveFailed ? "alert" : "status"}
+                  style={{
+                    margin: "4px 0 0",
+                    color: editorSaveFailed ? "#b91c1c" : "#475569",
+                    fontSize: 13,
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  {editorSaveStatus}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleSaveEditorConfig()}
+              disabled={
+                !editorDirty ||
+                !editorFileName ||
+                editorSaving ||
+                editorDraftChecking ||
+                editingRowIndex !== null ||
+                addWindowOpen
+              }
+              style={{
+                padding: "9px 14px",
+                border: 0,
+                borderRadius: 6,
+                background:
+                  editorDirty &&
+                    editorFileName &&
+                    !editorSaving &&
+                    !editorDraftChecking &&
+                    editingRowIndex === null &&
+                    !addWindowOpen
+                    ? "#334155"
+                    : "#94a3b8",
+                color: "white",
+                fontWeight: "bold",
+                cursor:
+                  editorDirty &&
+                    editorFileName &&
+                    !editorSaving &&
+                    !editorDraftChecking &&
+                    editingRowIndex === null &&
+                    !addWindowOpen
+                    ? "pointer"
+                    : "not-allowed",
+              }}
+            >
+              {editorSaving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+          {deleteTarget && (
+            <div className="retro-dialog-backdrop">
+              <section
+                aria-labelledby="delete-confirmation-title"
+                aria-modal="true"
+                className="retro-dialog"
+                role="alertdialog"
+              >
+                <header className="retro-dialog-titlebar">
+                  Confirm Delete
+                </header>
+                <div className="retro-dialog-content">
+                  <p id="delete-confirmation-title">
+                    Delete {deleteTarget.menu} item {deleteTarget.rowIndex + 1}?
+                  </p>
+                  <div className="retro-dialog-actions">
+                    <button
+                      autoFocus
+                      type="button"
+                      onClick={() => setDeleteTarget(null)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const { menu, rowIndex } = deleteTarget;
+                        const updatedOriginalConfig = removeConfigTableRow(
+                          originalEditorConfig,
+                          menu,
+                          rowIndex,
+                        );
+                        const updatedTables = {
+                          ...configRows,
+                          [menu]: (configRows[menu] ?? []).filter(
+                            (_, index) => index !== rowIndex,
+                          ),
+                        };
+                        setOriginalEditorConfig(updatedOriginalConfig);
+                        setConfigRows(updatedTables);
+                        setEditorDirty(true);
+                        clearEditorValidationStatus();
+                        void validateEditorDraft(
+                          updatedTables,
+                          updatedOriginalConfig,
+                        );
+                        setEditingRowIndex(null);
+                        setEditedRow({});
+                        setDeleteTarget(null);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+        </section>
+      )}{" "}
+    </div>
+  );
+}

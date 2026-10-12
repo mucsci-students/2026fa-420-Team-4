@@ -1,5 +1,3 @@
-
-
 {
   "config": {
     "rooms": [
@@ -426,7 +424,7 @@
       }
     ]
   },
-  "limit": 100,
+  "limit": 10,
   "optimizer_flags": [
     "faculty_course",
     "faculty_room",
